@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Building a Duplex — Lessons From Mine</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --bg:#000; --card:rgba(255,255,255,.045); --card2:rgba(255,255,255,.07);
+    --line:rgba(255,255,255,.10); --txt:#fff; --sub:#9a9aad; --dim:#62626e;
+    --grad:linear-gradient(100deg,#a9c6ff 0%,#4f7cff 55%,#7a5cff 100%);
+    --ease:cubic-bezier(.32,.72,0,1);
+  }
+  html { background:var(--bg); }
+  body { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif; background:var(--bg); color:var(--txt); min-height:100vh; }
+  body::before { content:""; position:fixed; inset:0; pointer-events:none;
+    background:radial-gradient(600px 340px at 15% -60px, rgba(79,124,255,.20), transparent 65%),
+               radial-gradient(700px 380px at 90% 0%, rgba(122,92,255,.14), transparent 65%); }
+  .wrap { position:relative; max-width:1060px; margin:0 auto; padding:34px 18px 70px; }
+  .grad-text { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .eyebrow { font-size:12px; letter-spacing:.34em; color:var(--sub); font-weight:600; text-align:center; }
+  h1.hero { font-size:clamp(40px,8vw,68px); font-weight:800; letter-spacing:-.03em; text-align:center; line-height:1.04; margin-top:14px; }
+  .subhead { text-align:center; font-size:clamp(16px,3.4vw,21px); margin-top:14px; font-weight:500; }
+  .intro { text-align:center; color:var(--sub); font-size:14px; line-height:1.6; max-width:620px; margin:12px auto 0; }
+  /* overall progress */
+  .overall { display:flex; align-items:center; gap:20px; justify-content:center; margin:34px auto 6px; flex-wrap:wrap; }
+  .ringbox { position:relative; width:118px; height:118px; }
+  .ringbox svg { transform:rotate(-90deg); filter:drop-shadow(0 0 14px rgba(79,124,255,.45)); }
+  .ringpct { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .ringpct b { font-size:27px; letter-spacing:-.02em; }
+  .ringpct span { font-size:10px; letter-spacing:.18em; color:var(--sub); }
+  .overall .otext { font-size:15px; color:var(--sub); line-height:1.55; max-width:250px; }
+  .overall .otext b { color:#fff; font-size:19px; display:block; letter-spacing:-.01em; }
+  /* search */
+  .searchbar { max-width:560px; margin:26px auto 4px; }
+  .searchbar input { width:100%; background:var(--card); border:1px solid var(--line); border-radius:99px; color:#fff;
+    font-size:16px; padding:13px 20px; outline:none; font-family:inherit; }
+  .searchbar input:focus { border-color:rgba(122,160,255,.6); box-shadow:0 0 0 4px rgba(79,124,255,.18); }
+  .searchbar input::placeholder { color:var(--dim); }
+  /* dashboard grid */
+  .grid { display:grid; grid-template-columns:1fr; gap:16px; margin-top:26px; }
+  @media (min-width:640px){ .grid{ grid-template-columns:1fr 1fr; } }
+  @media (min-width:980px){ .grid{ grid-template-columns:1fr 1fr 1fr; } .grid .ccard:last-child{ grid-column:2; } }
+  .ccard { position:relative; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:26px;
+    padding:26px 22px 22px; color:#fff; font-family:inherit; cursor:pointer; width:100%;
+    transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s; animation:fadeUp .6s var(--ease) both; }
+  .ccard:hover { transform:translateY(-4px); border-color:rgba(140,170,255,.45); box-shadow:0 18px 44px rgba(47,92,255,.22); }
+  .ccard .icon { display:flex; justify-content:center; margin-bottom:8px; }
+  .ccard h2 { font-size:24px; font-weight:800; letter-spacing:-.02em; line-height:1.15; text-align:center; }
+  .ccard .status { text-align:center; margin-top:9px; font-size:13.5px; color:var(--sub); min-height:24px; display:flex; align-items:center; justify-content:center; }
+  .pill-done { background:var(--grad); color:#fff; font-weight:700; font-size:12px; padding:4px 12px; border-radius:99px; letter-spacing:.02em; }
+  .bar { height:6px; background:rgba(255,255,255,.09); border-radius:99px; overflow:hidden; margin-top:12px; }
+  .bar i { display:block; height:100%; background:var(--grad); border-radius:99px; box-shadow:0 0 10px rgba(79,124,255,.7); transition:width .6s var(--ease); }
+  .explore { display:block; margin:18px auto 0; width:fit-content; border:1px solid rgba(150,175,255,.5); color:#cfe0ff;
+    font-size:13px; padding:8px 26px; border-radius:99px; letter-spacing:.04em; }
+  .ccard.complete { border-color:rgba(120,220,160,.4); }
+  .ccard.complete .icon svg { filter:drop-shadow(0 0 20px rgba(90,220,160,.35)); }
+  .checkbadge { position:absolute; top:16px; right:16px; width:28px; height:28px; border-radius:50%; background:linear-gradient(140deg,#5eead4,#34c759);
+    display:none; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#04150a; box-shadow:0 0 16px rgba(52,199,89,.55); }
+  .ccard.complete .checkbadge { display:flex; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+  /* footer */
+  .foot { text-align:center; margin-top:44px; }
+  .btn-ghost { background:transparent; border:1px solid var(--line); color:var(--sub); font-family:inherit; font-size:13.5px;
+    padding:10px 24px; border-radius:99px; cursor:pointer; }
+  .btn-ghost:hover { color:#fff; border-color:rgba(255,255,255,.35); }
+  .foot p { color:var(--dim); font-size:12.5px; margin-top:16px; line-height:1.6; }
+  /* views */
+  .view { display:none; }
+  .view.active { display:block; animation:viewIn .38s var(--ease) both; }
+  @keyframes viewIn { from { opacity:0; transform:translateX(26px) scale(.995); } to { opacity:1; transform:none; } }
+  .view.back-in { animation:viewBack .38s var(--ease) both; }
+  @keyframes viewBack { from { opacity:0; transform:translateX(-26px); } to { opacity:1; transform:none; } }
+  /* category page */
+  .backbtn { background:transparent; border:1px solid rgba(150,175,255,.5); color:#cfe0ff; font-family:inherit;
+    font-size:13.5px; padding:9px 20px; border-radius:99px; cursor:pointer; letter-spacing:.02em; }
+  .cathead { display:flex; align-items:center; gap:18px; margin-top:24px; flex-wrap:wrap; }
+  .cathead h2 { font-size:clamp(30px,6vw,44px); font-weight:800; letter-spacing:-.025em; line-height:1.08; }
+  .cathead .cstatus { color:var(--sub); font-size:14.5px; margin-top:6px; }
+  .cathead .bar { max-width:420px; }
+  .seg { display:inline-flex; background:var(--card); border:1px solid var(--line); border-radius:99px; padding:3px; margin-top:22px; }
+  .seg button { border:none; background:transparent; color:var(--sub); font-family:inherit; font-size:13px; font-weight:600;
+    padding:7px 18px; border-radius:99px; cursor:pointer; }
+  .seg button.act { background:var(--grad); color:#fff; }
+  .items { margin-top:20px; display:flex; flex-direction:column; gap:12px; }
+  .item { display:flex; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px 18px; animation:fadeUp .5s var(--ease) both; }
+  .ck { flex:none; width:29px; height:29px; border-radius:50%; border:2px solid transparent; margin-top:2px; cursor:pointer; position:relative;
+    background:linear-gradient(#0b0b10,#0b0b10) padding-box, var(--grad) border-box; display:flex; align-items:center; justify-content:center; transition:transform .18s var(--ease); }
+  .ck:active { transform:scale(.86); }
+  .ck:focus-visible, .ccard:focus-visible, .backbtn:focus-visible, .seg button:focus-visible, .btn-ghost:focus-visible { outline:2px solid #7ab0ff; outline-offset:3px; }
+  .ck svg { width:15px; height:15px; }
+  .ck svg path { stroke:#fff; stroke-width:3.2; fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:26; stroke-dashoffset:26; }
+  .item.done .ck { background:var(--grad) border-box; box-shadow:0 0 14px rgba(79,124,255,.55); }
+  .item.done .ck svg path { animation:draw .35s var(--ease) forwards; }
+  @keyframes draw { to { stroke-dashoffset:0; } }
+  .item .t { font-size:16.5px; font-weight:700; letter-spacing:-.01em; line-height:1.35; position:relative; width:fit-content; }
+  .item .t::after { content:""; position:absolute; left:0; top:54%; height:2px; width:0; background:#8b8b98; transition:width .35s var(--ease); }
+  .item.done .t { color:#77777f; }
+  .item.done .t::after { width:100%; }
+  .item .d { color:#c9c9d2; font-size:14.5px; line-height:1.65; margin-top:5px; transition:color .3s; }
+  .item.done .d { color:#5d5d66; }
+  .catlabel { font-size:11px; letter-spacing:.22em; font-weight:700; margin-bottom:7px; }
+  .empty { text-align:center; color:var(--dim); padding:44px 0; font-size:15px; }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+  @media print {
+    body { background:#fff; color:#000; } body::before { display:none; }
+    .searchbar, .foot, .backbtn, .seg, .explore { display:none !important; }
+    .view { display:none !important; } #view-cat.active, #view-dash { display:block !important; }
+    .item, .ccard { background:#fff; border-color:#ccc; color:#000; break-inside:avoid; }
+    .item .d { color:#333; } h1.hero, .ccard h2, .cathead h2 { color:#000; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ======= custom icon set: glossy isometric glass on floating platforms ======= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gGlass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#cfe4ff"/><stop offset=".45" stop-color="#4f7cff"/><stop offset="1" stop-color="#7a5cff"/>
+    </linearGradient>
+    <linearGradient id="gGlassSoft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eaf3ff"/><stop offset=".5" stop-color="#7ab0ff"/><stop offset="1" stop-color="#3b5bff"/>
+    </linearGradient>
+    <linearGradient id="gPlat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fb4ff" stop-opacity=".5"/><stop offset="1" stop-color="#3b5bff" stop-opacity=".12"/>
+    </linearGradient>
+    <radialGradient id="gGlow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#4f7cff" stop-opacity=".55"/><stop offset="1" stop-color="#4f7cff" stop-opacity="0"/>
+    </radialGradient>
+    <g id="plat">
+      <ellipse cx="60" cy="103" rx="42" ry="10" fill="url(#gGlow)"/>
+      <polygon points="60,84 102,95 60,108 18,95" fill="url(#gPlat)" stroke="#bcd2ff" stroke-opacity=".55" stroke-width="1"/>
+    </g>
+    <symbol id="icon-plans" viewBox="0 0 120 120">
+      <use href="#plat"/>
+      <polygon points="30,66 78,52 90,58 42,72" fill="url(#gGlassSoft)" opacity=".9"/>
+      <polygon points="34,42 46,38 46,64 34,68" fill="url(#gGlass)"/>
+      <polygon points="46,38 82,28 82,54 46,64" fill="url(#gGlassSoft)"/>
+      <polygon points="58,60 58,34 70,30 70,56" fill="url(#gGlass)" opacity=".92"/>
+      <polyline points="40,58 62,50 84,44" fill="none" stroke="#eaf3ff" stroke-width="1.6" opacity=".8"/>
+    </symbol>
+    <symbol id="icon-utilities" viewBox="0 0 120 120">
+      <use href="#plat"/>
+      <path d="M38,84 L38,64 Q38,54 48,54 L58,54" fill="none" stroke="url(#gGlass)" stroke-width="11" stroke-linecap="round"/>
+      <path d="M60,14 C60,14 82,40 82,56 a22,22 0 1 1 -44,0 C38,40 60,14 60,14 Z" fill="url(#gGlassSoft)" stroke="#dceaff" stroke-opacity=".7"/>
+      <ellipse cx="51" cy="50" rx="5" ry="9" fill="#fff" opacity=".45" transform="rotate(-18 51 50)"/>
+    </symbol>
+    <symbol id="icon-electrical" viewBox="0 0 120 120">
+      <use href="#plat"/>
+      <circle cx="60" cy="50" r="33" fill="url(#gGlassSoft)" stroke="#dceaff" stroke-opacity=".7"/>
+      <circle cx="60" cy="50" r="33" fill="none" stroke="#a9c6ff" stroke-width="1.4" opacity=".7"/>
+      <polygon points="64,26 44,54 58,54 52,76 76,46 61,46" fill="#eef5ff"/>
+    </symbol>
+    <symbol id="icon-drywall" viewBox="0 0 120 120">
+      <use href="#plat"/>
+      <g fill="url(#gGlass)">
+        <rect x="30" y="26" width="60" height="7" rx="2"/>
+        <rect x="30" y="71" width="60" height="7" rx="2"/>
+        <rect x="32" y="26" width="7" height="52" rx="2"/>
+        <rect x="48" y="26" width="7" height="52" rx="2" opacity=".85"/>
+        <rect x="65" y="26" width="7" height="52" rx="2" opacity=".7"/>
+        <rect x="81" y="26" width="7" height="52" rx="2" fill="url(#gGlassSoft)"/>
+      </g>
+    </symbol>
+    <symbol id="icon-finishes" viewBox="0 0 120 120">
+      <use href="#plat"/>
+      <path d="M42,80 L42,44 Q42,26 60,26 L74,26 Q86,26 86,38 L86,46" fill="none" stroke="url(#gGlass)" stroke-width="10" stroke-linecap="round"/>
+      <rect x="79" y="44" width="14" height="9" rx="3" fill="url(#gGlassSoft)"/>
+      <ellipse cx="60" cy="88" rx="30" ry="7" fill="url(#gGlassSoft)" opacity=".9"/>
+      <path d="M86,58 q3,6 0,9 q-3,-3 0,-9" fill="#a9c6ff" opacity=".85"/>
+    </symbol>
+    <symbol id="icon-exterior" viewBox="0 0 120 120">
+      <use href="#plat"/>
+      <rect x="56" y="58" width="8" height="26" rx="3" fill="url(#gGlass)"/>
+      <circle cx="60" cy="34" r="19" fill="url(#gGlassSoft)"/>
+      <circle cx="42" cy="48" r="13" fill="url(#gGlass)" opacity=".9"/>
+      <circle cx="78" cy="48" r="13" fill="url(#gGlass)" opacity=".8"/>
+      <circle cx="52" cy="28" r="5" fill="#fff" opacity=".5"/>
+    </symbol>
+    <symbol id="icon-handover" viewBox="0 0 120 120">
+      <use href="#plat"/>
+      <path d="M60,16 L90,26 V52 C90,72 76,84 60,90 C44,84 30,72 30,52 V26 Z" fill="url(#gGlassSoft)" stroke="#dceaff" stroke-opacity=".7"/>
+      <polyline points="45,52 56,63 76,40" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+  <!-- ============ DASHBOARD ============ -->
+  <main class="view active" id="view-dash">
+    <div class="eyebrow">A PERSONAL CHECKLIST</div>
+    <h1 class="hero grad-text">Building a Duplex</h1>
+    <p class="subhead">Lessons from mine — so yours goes better.</p>
+    <p class="intro">Check off items as you go. These are my real experiences (including the regrets!); confirm code/technical details with your architect and trades.</p>
+
+    <div class="overall">
+      <div class="ringbox">
+        <svg width="118" height="118" viewBox="0 0 118 118">
+          <defs><linearGradient id="gRing" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#a9c6ff"/><stop offset=".55" stop-color="#4f7cff"/><stop offset="1" stop-color="#7a5cff"/>
+          </linearGradient></defs>
+          <circle cx="59" cy="59" r="50" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="10"/>
+          <circle id="ringFg" cx="59" cy="59" r="50" fill="none" stroke="url(#gRing)" stroke-width="10" stroke-linecap="round"
+                  stroke-dasharray="314.16" stroke-dashoffset="314.16" style="transition:stroke-dashoffset .7s cubic-bezier(.32,.72,0,1)"/>
+        </svg>
+        <div class="ringpct"><b id="ringPct">0%</b><span>DONE</span></div>
+      </div>
+      <div class="otext"><b id="overallCount">0 of 135 lessons done</b>Tap a card to open its checklist. Your checkmarks are saved in this browser as you go.</div>
+    </div>
+
+    <div class="searchbar"><input id="search" type="search" placeholder="Search all 135 lessons…" aria-label="Search lessons" autocomplete="off"></div>
+
+    <div class="grid" id="grid"></div>
+    <div class="items" id="results" style="display:none"></div>
+
+    <div class="foot">
+      <button class="btn-ghost" id="resetBtn">Start over (clear all checkmarks)</button>
+      <p>Progress is saved only in this browser, on this device.<br>Built from a much-loved spreadsheet, upgraded because you deserve better than a spreadsheet.</p>
+    </div>
+  </main>
+
+  <!-- ============ CATEGORY ============ -->
+  <section class="view" id="view-cat" aria-live="polite">
+    <button class="backbtn" id="backBtn">‹ Dashboard</button>
+    <div class="cathead">
+      <span id="catIcon"></span>
+      <div style="flex:1;min-width:230px">
+        <h2 class="grad-text" id="catName"></h2>
+        <div class="cstatus" id="catStatus"></div>
+        <div class="bar"><i id="catBar" style="width:0%"></i></div>
+      </div>
+    </div>
+    <div class="seg" role="group" aria-label="Filter items">
+      <button data-f="all" class="act">All</button><button data-f="remaining">Remaining</button><button data-f="done">Done</button>
+    </div>
+    <div class="items" id="catItems"></div>
+  </section>
+
+</div>
+
+<script type="application/json" id="data">[{"slug": "floor-plans", "icon": "plans", "name": "Floor Plans", "items": [{"id": "floor-plans-01", "subject": "Living room layouts", "lesson": "This is something I'd really think through before you commit to the floor plan. Imagine the TV on one wall, then imagine moving it to a different wall: where would the couch go, would you block a window or the view, and would you still have power and Cat6 in the right spots? I have custom shelving for a TV and it looks great, but it really locks me into one living-room layout. I wish I'd given myself more flexibility."}, {"id": "floor-plans-02", "subject": "Ceiling height", "lesson": "If you can convince your architect to give you 11- or 12-foot ceilings in the living room, do it if the budget and permitted height work! High ceilings feel amazing. Also, very important: the taller the ceiling, the bigger the Christmas tree you can put up."}, {"id": "floor-plans-03", "subject": "Dropped ceilings", "lesson": "I think dropped ceilings are absolutely beautiful. Just know that they can dictate where your dining table, kitchen island, chandelier and furniture go because the ceiling design is so specific. If the ceiling is high enough, that restriction matters less. I'd still consider them, but I'd decide the room layout first."}, {"id": "floor-plans-04", "subject": "Large kitchen island", "lesson": "If you have the room, go for a giant kitchen island. I love having outlets on mine, and the extra countertop space is fantastic for everyday family life. It's one of those things you'll use constantly, not just when you're entertaining."}, {"id": "floor-plans-05", "subject": "Microwave height", "lesson": "This sounds like a tiny detail, but don't mount the microwave so high that the kids can't reach it. As they get older, you'll want them to be able to heat up their own food (safely) without asking you every single time. Think about the height now, before cabinetry is ordered."}, {"id": "floor-plans-06", "subject": "Main-floor bathroom near rear entry", "lesson": "If you're putting a full bathroom on the main floor, I'd put it as close to the back door/garage entrance as you reasonably can. Kids come in absolutely filthy from playing outside. It's so much easier to send them straight into the bath instead of having them walk through the whole house tracking mud and dirt everywhere."}, {"id": "floor-plans-07", "subject": "Kids' bedroom flexibility", "lesson": "Please actually draw two or three possible layouts for each child's room, not just one. Where do the beds go if two kids share? What happens when they want a desk, or upgrade to a double or queen bed? In one of my rooms there's the bedroom door, a second door to the Jack-and-Jill bathroom, and a double-door closet. With all those doors and the windows, there's basically only ONE place to put the furniture. It's frustrating."}, {"id": "floor-plans-08", "subject": "Avoid Jack-and-Jill bathroom", "lesson": "Honestly, this is one of my biggest regrets. I hate our Jack-and-Jill bathroom—the one with a door from each child's bedroom. It sounds convenient, but kids make noise, parents make noise, and someone using the bathroom can wake a sleeping or sick child in the other room. I'd much rather the kids step into the hallway and use a shared hallway bathroom. The tiny bit of convenience isn't worth the lack of separation."}, {"id": "floor-plans-09", "subject": "Ensuite access", "lesson": "An ensuite for a bedroom is nice, but think about who will have to clean or fix it years from now. If it's in your child's bedroom, you're going through their room whenever you need to get to the bathroom. Not necessarily a deal-breaker; just picture that when they're teenagers."}, {"id": "floor-plans-10", "subject": "Larger walk-in shower", "lesson": "I love our walk-in shower and the sliding glass doors. If you can afford to make yours a little bigger or custom-sized, I would. It's so much nicer when two people can fit comfortably, or when you need to shower with/help a baby or young child. We also have a bit of water splash out at the bottom of the glass, so plan for that."}, {"id": "floor-plans-11", "subject": "Side-by-side laundry", "lesson": "Stackable washer/dryers suck, in my opinion. Side-by-side machines are much easier for kids to help with as they get older, and I like the accessibility. I'd choose side-by-side if you have the space rather than save a bit of floor area with a stack."}, {"id": "floor-plans-12", "subject": "Laundry near back door", "lesson": "My washer and dryer are behind the first door when I come in from the garage/back entrance, and I love that location. When the kids come in covered in dirt—or worse, there's vomit or another mess—I can deal with it immediately instead of carrying it through the house. I'd put a laundry sink there too so you can rinse gross stuff before tossing it straight into the washer."}, {"id": "floor-plans-13", "subject": "Storage everywhere", "lesson": "You will have SO much stuff, especially with kids: bikes, basketballs, gym equipment, clothes in different sizes, Halloween costumes, Christmas decorations, you name it. I can't overstate how useful extra storage is. Think about where all that stuff will actually live, not just how pretty the rooms look on the drawings."}, {"id": "floor-plans-14", "subject": "Accessible crawl space", "lesson": "I absolutely love having a crawl space that I can access from INSIDE my house. All our seasonal decorations and out-of-season clothes go down there, and I don't have to go outside to get them. Ask the architect whether you can make it larger or a bit more usable. I was told crawl spaces may be treated differently from living floor area, but don't assume they're automatically exempt—have the architect confirm the Vancouver rules."}, {"id": "floor-plans-15", "subject": "Attic storage", "lesson": "If you can get part of the attic safely prepared/finished for storage, I'd consider it. Even a modest usable area is great for the stuff you don't need every day. Obviously ask the builder about safe flooring, structure, insulation, ventilation and access rather than just putting things on the attic framing."}, {"id": "floor-plans-16", "subject": "Under-stair space", "lesson": "Don't let the space under the stairs go to waste. It might become storage or where the plumber puts mechanical equipment. One thing to think about in a three-level duplex: if that space is in the basement and you eventually have a tenant, will YOU be able to get to whatever is stored or installed there without going through their home?"}, {"id": "floor-plans-17", "subject": "Basement stair doors", "lesson": "If you're going to use the basement as part of your own home rather than a rental suite, I'd love doors at both the top and bottom of the stairs for noise and privacy. Ask the architect what is allowed and have any future door location planned properly. Don't assume you can simply add a door after occupancy without checking fire/egress and permit requirements."}, {"id": "floor-plans-18", "subject": "Windows and skylights", "lesson": "More windows and natural light are fantastic, and I really like skylights (I called them sunroofs when we talked). I thought the extra cost was worth it. There are limits on how much glazing you can have on certain exterior walls, though, so have your architect show you the options instead of assuming you can just add windows everywhere."}, {"id": "floor-plans-19", "subject": "Stone window sills", "lesson": "A big marble or granite window sill looks beautiful. Mine are quite deep, and I notice that the window area can feel colder or draftier because of the way the window is set back. Curtains help, but it's worth thinking about the window detail and insulation before choosing the look."}, {"id": "floor-plans-20", "subject": "Frosted ensuite door", "lesson": "I have a frosted-glass door for my ensuite and, surprisingly, I really like it. It lets a little extra light pass between the ensuite and the bedroom at night, and you can sort of tell when someone is in there. I wouldn't bother for the kids' bathroom, but it's a nice touch in the primary ensuite."}, {"id": "floor-plans-21", "subject": "Pocket doors", "lesson": "Pocket doors are annoying. Mine have settled/needed adjustment, and once the door slides into the wall, that whole wall cavity becomes pretty useless—you can't casually add outlets, screw in shelves or hang things there. They save swing space, sure, but think about what you lose in return."}, {"id": "floor-plans-22", "subject": "Mirrored sliding closet doors", "lesson": "I love the sliding mirrored doors on my main-floor entrance closet. They make the entry feel more open and give you a mirror without using another wall. This is one of those smaller design choices I'd happily do again."}]}, {"slug": "utilities-plumbing", "icon": "utilities", "name": "Utilities & Plumbing", "items": [{"id": "utilities-plumbing-01", "subject": "Electrical service for all dwellings", "lesson": "This is a BIG one for your duplex-plus-laneway project. Talk to the electrician and BC Hydro early, not after the house is built. I'd ask them to investigate something like 200 amps for each duplex and enough additional capacity for the laneway, subject to a proper load calculation and what BC Hydro will actually approve. I wish I'd been more aggressive about planning for future power needs."}, {"id": "utilities-plumbing-02", "subject": "Upgrade BC Hydro service early", "lesson": "If you're already doing major construction and BC Hydro is coming out, seriously consider doing the service upgrade/split then and there. Having to book them again later, potentially disrupt the whole block and redo work is a nightmare and can get really expensive. Do it while the site is open if the design calls for it."}, {"id": "utilities-plumbing-03", "subject": "Multiple-household electrical loads", "lesson": "Picture everybody using power at once: your dryer, your duplex neighbor's dryer, the laneway's dryer, induction cooktops, air fryers, heat pumps and maybe multiple EV chargers. That's why I keep bringing up the electrical service. Don't just look at what one household needs today—get the electrician to calculate the actual loads across the whole development."}, {"id": "utilities-plumbing-04", "subject": "Level 2 EV charging capacity", "lesson": "Even if you don't have an EV today, plan for Level 2 charging at the garage/parking spots for the duplexes and laneway. I wouldn't want to discover later that there isn't enough panel or service capacity. Ask about dedicated circuits, smart load management and the most practical cable route."}, {"id": "utilities-plumbing-05", "subject": "Fan-coil heating and cooling", "lesson": "In-floor heating is great, but honestly my fan-coil system that does both heating AND cooling is fantastic. Being able to cool the house is a huge benefit. If I were choosing again, I'd absolutely prioritize proper heating/cooling rather than assume radiant heat alone is enough."}, {"id": "utilities-plumbing-06", "subject": "Radiant bathroom floors", "lesson": "If you can get in-floor heating in the ensuites and full bathrooms, highly recommend it. Warm bathroom floors are amazing in winter. I wouldn't spend the same money putting it in a little powder room, though—that's much lower on my list."}, {"id": "utilities-plumbing-07", "subject": "Independent temperature zones", "lesson": "I'd really consider two or three temperature zones if you can afford it. Maybe you like the upstairs bedrooms cooler for sleeping but want the living room warmer in winter. And if you have a basement tenant or family staying downstairs, it's great if they can have a different temperature too. More equipment/control costs more, but the flexibility is fantastic."}, {"id": "utilities-plumbing-08", "subject": "ERV ventilation", "lesson": "I think an ERV is a must-have. I wasn't sure whether you could combine its functions with a fan coil, so ask the mechanical contractor to explain the setup. My point is: make sure the home has a proper fresh-air/ventilation strategy, not just heating and cooling."}, {"id": "utilities-plumbing-09", "subject": "Serviceable HVAC filters", "lesson": "Make sure you can actually get to the fan-coil or ERV filters to change them. Same general idea with an outdoor heat pump—leave proper service access. It sounds obvious until the equipment is boxed into a ridiculous corner and a simple filter change becomes a project."}, {"id": "utilities-plumbing-10", "subject": "Tankless hot water benefits", "lesson": "I have gas-fired hot water on demand, and for us it's been great. We're a family of five, plus tenants downstairs (sometimes a couple of people), and the kids fill bathtubs all the time. We've never run out of hot water. That is a HUGE plus compared with worrying about a storage tank running empty."}, {"id": "utilities-plumbing-11", "subject": "Tankless hot water trade-offs", "lesson": "The downside of my tankless setup is that hot water can take one or two minutes to reach the upstairs ensuite when the unit is down in the basement. The basement gets hot water sooner. I also feel the gas usage/cost is significant; the actual cost comparison depends on your system and rates. I'd still choose it for the endless hot water, but I'd ask about the piping layout and whether recirculation makes sense."}, {"id": "utilities-plumbing-12", "subject": "Mechanical room size", "lesson": "I really wish my mechanical/plumbing area were bigger and better laid out. Mine is basically a tight closet with a random plywood wall and a confusing mess of pipes, valves and equipment. There's barely any room to work, maintain things or add an upgrade. If you can give this space a little more room and make the layout logical, future you will thank you."}, {"id": "utilities-plumbing-13", "subject": "Main water shutoffs", "lesson": "Have the plumber show you EXACTLY where the main water shutoff is, which valves serve which parts of the house, and how to reach them quickly. In my house the plumbing is so cramped and confusing that I wish it had been planned much more cleanly. This matters when there's a leak and you need to act fast."}, {"id": "utilities-plumbing-14", "subject": "Gas meter access", "lesson": "Think about where the gas meter goes. FortisBC needs access to inspect or deal with it, especially during an emergency. How far into your property do you actually want someone to have to walk to reach it? I'd sort that out with the utility and architect at the planning stage."}, {"id": "utilities-plumbing-15", "subject": "Water meter access", "lesson": "I assume you'll have to deal with a water meter too. Make sure you know where it is and that it's easy to reach for readings, inspections and maintenance. This is the kind of little thing nobody thinks about until somebody needs access."}, {"id": "utilities-plumbing-16", "subject": "Fridge water connection", "lesson": "If you're putting a water line to the fridge, please make the connection AND shutoff easy to get at. Those lines can leak, and you don't want to pull apart half the kitchen to fix one. Under the sink or behind the fridge could both work—your call, depending on which is actually accessible."}, {"id": "utilities-plumbing-17", "subject": "Shower plumbing on exterior walls", "lesson": "When you're deciding where the tub/shower goes, think about where the actual pipes sit behind the wall. I'd avoid putting vulnerable water lines on an unprotected exterior wall because of freezing concerns. I remember this affecting how bathrooms could be laid out; ask the plumber/architect what the proper wall assembly allows."}, {"id": "utilities-plumbing-18", "subject": "Shower/tub service access", "lesson": "If there's a bathtub faucet, shower valve or other plumbing behind a wall, think about how you're going to get to it when something leaks. I would much rather have a discreet access panel on the other side than be forced to cut a hole in finished drywall. Plumbing leaks do happen."}, {"id": "utilities-plumbing-19", "subject": "Dryer vent routing", "lesson": "My dryer is right by the back entrance and its exhaust duct goes almost straight outside. I LOVE that I can get to the vent and clean the lint out without a giant ordeal. When you're placing the laundry room, think about where that dryer duct has to travel, not just where the machines look good."}, {"id": "utilities-plumbing-20", "subject": "Tenant vs owner utility access", "lesson": "This is especially important if you're building a basement suite. Is the electrical panel, main shutoff or under-stair mechanical equipment in the tenant's space? If something breaks, do you have reasonable access, or do you have to arrange to enter their home? I would plan this before the rooms are drawn, while respecting tenant access rules."}]}, {"slug": "electrical-tech", "icon": "electrical", "name": "Electrical & Tech", "items": [{"id": "electrical-tech-01", "subject": "Cat6 throughout", "lesson": "Run Cat6 EVERYWHERE you might reasonably want wired internet: bedrooms, living rooms, offices, TV walls, even spots you might rearrange later. It's so cheap to pull while the walls are open. Once drywall is up, running another cable becomes a pain and sometimes means opening walls. I'd rather have a few unused Ethernet jacks than wish I'd installed them."}, {"id": "electrical-tech-02", "subject": "Why Cat6", "lesson": "Here's WHY I keep pushing Cat6: Telus already sells internet plans faster than 1 gig, and those speeds are only going to improve. I don't want to pay for 3-gig internet and discover my in-wall wiring is the bottleneck. Cat6 gives better headroom for multigig and can support 10 Gb over suitable run lengths. Cat5e can also handle some multigig speeds under the right conditions, so it's not strictly 'stuck at 1 gig'—but if you're building new, I still wouldn't cheap out on the cable."}, {"id": "electrical-tech-03", "subject": "Fiber pathway", "lesson": "I'd consider running fiber, or at least a proper conduit, from the incoming Telus/service location to the media panel and maybe from the media panel to the living room or another central spot. That way, if you ever want the modem/router somewhere else or internet speeds keep increasing, you're not trying to fish new cable through finished walls."}, {"id": "electrical-tech-04", "subject": "Skip unnecessary coax", "lesson": "I had coax run around the home and, for my setup, it's basically useless. I'd spend that money on Cat6 instead. Obviously, if you actually need coax for a specific service, that's different—but I wouldn't automatically put it in every room just because that's what people used to do."}, {"id": "electrical-tech-05", "subject": "Oversized media panel", "lesson": "Seriously, make the media panel BIG. I'd aim for something around double the size of the small ones I've seen. By the time you add the router, network switch for all those Cat6 outlets, PoE gear, security camera recorder/hard drive, alarm stuff and power supplies, it fills up quickly. And leave ventilation and access around the equipment too."}, {"id": "electrical-tech-06", "subject": "Accessible media panel location", "lesson": "One of my pet peeves: my media panel is inside my child's BEDROOM CLOSET on the second floor. Why? I assume it was convenient to drop wires from the attic, but now Telus or anyone troubleshooting the internet has to go through a kid's room. I'd put it in a properly planned main-floor closet or pantry instead, so a technician can come in, do the work and leave without walking upstairs."}, {"id": "electrical-tech-07", "subject": "Hinged media panel door", "lesson": "Don't get a media panel cover that you need a screwdriver to remove every time. Pay the extra money (I was thinking maybe $50 or so) for a proper hinged door with a latch, like the access panels we see at work. You'll be opening it more than you think."}, {"id": "electrical-tech-08", "subject": "Ceiling Wi-Fi access points", "lesson": "I actually had Cat6 run to ceiling-mounted Wi-Fi access point locations in the living room. It sounded like good future-proofing, but professional units can be expensive, use PoE and sometimes have their own controller/software setup (like Meraki). I ended up using Google Wi-Fi and don't use those ceiling points. Nice to have, definitely not a must-have for me."}, {"id": "electrical-tech-09", "subject": "Outdoor PoE cameras", "lesson": "For security cameras, run Cat6 straight from the media panel to the outside spots where you want cameras. A compatible PoE camera can get power AND network over that one cable. Much cleaner than trying to figure out separate power afterward. Think through the actual camera angles before the exterior is finished."}, {"id": "electrical-tech-10", "subject": "Camera cable pull strings", "lesson": "For each outdoor camera location, I'd run the Cat6 and also provide a usable pull string in conduit if possible. That way if you ever need a second cable or have to replace the first, you're not ripping open the exterior. A pull string doesn't help if the cable is stapled behind finished walls, so make sure there's a real pathway."}, {"id": "electrical-tech-11", "subject": "Smart doorbell wiring", "lesson": "Run wiring to the front doorbell location and consider Cat6 while the wall is open. I like the idea of being able to install a Nest or another smart video doorbell later without starting from scratch. Just check the actual doorbell model—some use conventional low-voltage power rather than PoE."}, {"id": "electrical-tech-12", "subject": "Smart thermostat compatibility", "lesson": "This one really annoys me. I built a brand-new house and somehow didn't get the right wires for the smart thermostats I wanted. Such a simple thing to get right before drywall! Tell the HVAC/electrical people what thermostat you might want (Nest, etc.) and make sure the right power and control conductors are there."}, {"id": "electrical-tech-13", "subject": "Spare thermostat cables", "lesson": "I'd even consider an extra cable or spare conductors to each thermostat, and Cat6 or conduit if the system design makes sense. I originally thought 'just run two Cat6 cables'—but smart thermostats don't all use Ethernet/PoE, so have the HVAC installer specify the correct wiring. The key is to leave yourself options, because the existing cables may be stapled to studs and impossible to pull out later."}, {"id": "electrical-tech-14", "subject": "TV outlets at mounting height", "lesson": "If you might wall-mount a TV in the living room OR bedroom, put power and Cat6 right behind the TV at the correct height. But don't forget power and Ethernet LOWER DOWN too, where the PlayStation, Switch, Blu-ray player or other devices actually sit. I love having the option to mount a TV without visible cords."}, {"id": "electrical-tech-15", "subject": "TV-to-console conduit", "lesson": "This is such an easy win during construction: put a nice big low-voltage conduit/PVC pathway from behind the wall-mounted TV down to where the consoles and media gear will live. Then you can change HDMI or other cables later without opening the wall. It should have accessible ends, appropriate separation from mains wiring and enough space for the cable connectors."}, {"id": "electrical-tech-16", "subject": "Entertainment device outlets", "lesson": "Remember that the TV isn't the only thing that needs power. The PlayStation, Nintendo Switch, modem/router, streaming box and Blu-ray player might all be on a shelf to the side or below. Put enough outlets and Ethernet there as well as behind the screen. Otherwise you're stuck with ugly extension cords."}, {"id": "electrical-tech-17", "subject": "Island outlets", "lesson": "Outlets on the kitchen island are fantastic. We use them all the time. I'd definitely plan convenient power around a big island, with the electrician figuring out the permitted locations and how to keep them looking clean."}, {"id": "electrical-tech-18", "subject": "Kitchen appliance circuits", "lesson": "Think about how many appliances you might use at once: microwave, convection oven, air fryer, coffee maker, induction cooking, etc. I don't want one appliance tripping the circuit because someone starts another one. Tell the electrician the actual appliances and where they'll go, so the circuits are laid out properly."}, {"id": "electrical-tech-19", "subject": "Kitchen GFCI protection", "lesson": "I'd ask for plenty of conveniently located, properly protected kitchen receptacles—what I called 'two or three different GFCIs' when we were talking. More importantly, have the electrician provide enough separate circuits for the loads; just adding GFCI outlets doesn't increase capacity. The kitchen is where all the high-draw gadgets pile up."}, {"id": "electrical-tech-20", "subject": "USB charging outlets", "lesson": "USB-C and USB-A outlets in the kitchen and living room are genuinely handy. We charge so many little devices these days that having charging built into a normal wall receptacle makes sense. I'd put them where people actually sit and where devices end up on the counter."}, {"id": "electrical-tech-21", "subject": "Bidet outlet", "lesson": "Put an electrical outlet near the toilet if there's any chance you want an electric bidet later. This is such a small thing during rough-in and a pain afterward. Have the electrician position and protect it properly for a bathroom."}, {"id": "electrical-tech-22", "subject": "Vanity outlets", "lesson": "I really like the idea of outlets INSIDE or underneath the bathroom vanity so hair dryers and other grooming tools can be stored neatly instead of leaving cords dangling all over the counter. Also keep a convenient wall outlet where needed. Have the electrician check the safe/code-compliant locations—bathrooms are obviously wet areas."}, {"id": "electrical-tech-23", "subject": "Hallway outlets", "lesson": "Don't underestimate hallway outlets. They're useful for vacuuming, charging things and nightlights, and they're easy to forget because the hallway looks like 'just a hallway' on the floor plan. I would rather have one and not use it than need one later."}, {"id": "electrical-tech-24", "subject": "Switched hallway nightlights", "lesson": "With kids, hallway nightlights are super helpful when they get up in the middle of the night. I'd plan the outlets/lighting where they actually need to see. For dedicated lights, I prefer a switch so you can turn them off when you don't need them."}, {"id": "electrical-tech-25", "subject": "Vacuum charging points", "lesson": "Think NOW about where you're going to hang a cordless Dyson or Shark vacuum and put an outlet there. Maybe that's in the pantry, laundry room or an upstairs closet. Honestly, with messy kids you may even want a second vacuum upstairs. Having a charging spot ready is so much nicer than a cable hanging across the wall."}, {"id": "electrical-tech-26", "subject": "Bedroom lighting groups", "lesson": "In my bedroom I have four lights arranged around the room and one center light, on separate switches. I really like being able to turn on just the center or just the outer lights. It's a small layout detail, but it makes the room much more flexible."}, {"id": "electrical-tech-27", "subject": "Three-way light switches", "lesson": "Three-way switches are really useful. If you can control a light from both ends of a hallway or stairway—or other sensible locations—do it. It's one of those little conveniences you appreciate every day."}, {"id": "electrical-tech-28", "subject": "Closet lighting", "lesson": "Lights inside closets: DEFINITELY do it. It's not that expensive when the walls are open and the electrician is already running cables. Digging around in a dark closet later is annoying, and adding lighting after the fact is much more trouble."}, {"id": "electrical-tech-29", "subject": "Bathroom pot lights", "lesson": "I much prefer recessed pot lights in bathrooms. Some of those pretty decorative light bowls collect dust and grime and are an absolute nightmare to take apart and clean. Pot lights are simpler and avoid that whole problem for me."}, {"id": "electrical-tech-30", "subject": "Exterior pot/motion lights", "lesson": "I like exterior pot lights and motion-triggered lights around the house. They're practical for arriving home, going outside after dark and security. I'd make sure the fixtures are appropriate for outdoor weather rather than just picking whatever looks nice."}, {"id": "electrical-tech-31", "subject": "Front gate light switch", "lesson": "I have a light way out at the front gate by the sidewalk, and I LOVE that I can turn it on from inside. What I don't love is that the switch is randomly on a living-room wall. It should be right beside the front entry with the other switches. Walk through the house on paper and think about where your hand will reach."}, {"id": "electrical-tech-32", "subject": "Backyard evening lighting", "lesson": "Imagine having friends over in the backyard on a summer evening—or going out there when it gets dark early in fall and winter. Is there enough light to actually use the space? Don't only plan a single security light. Think about lighting the places where people will sit and where the kids play."}, {"id": "electrical-tech-33", "subject": "Switch placement walkthrough", "lesson": "This is one of those things that's easy to miss on a drawing. Pretend you're walking in the front door, coming through the garage, going upstairs and heading to bed. Where do you instinctively reach for the switch? My gate-light switch ended up somewhere silly, and I'd fix that if I built again."}, {"id": "electrical-tech-34", "subject": "Label electrical panel", "lesson": "Make the electrician label the electrical panel PROPERLY. I want to know exactly which breaker controls the exterior lights, the kitchen outlets, the bedrooms and so on. You don't want to stand there flipping random breakers when you're trying to repair something."}, {"id": "electrical-tech-35", "subject": "Alarm system and battery", "lesson": "If you're putting in an alarm, make sure the control panel and backup battery are easy to reach when they need servicing. I'd keep the equipment near the media/network panel if possible, ideally in that accessible main-floor closet instead of somewhere buried in a bedroom."}, {"id": "electrical-tech-36", "subject": "Camera viewing system", "lesson": "Personally, I don't see the point of having a dedicated screen on the wall showing all the security cameras live all day. I just check them on my phone. Decide what security setup you actually want before someone sells you a giant monitor and equipment you won't use."}, {"id": "electrical-tech-37", "subject": "Install Level 2 charger now", "lesson": "I wouldn't just leave a rough-in for a Level 2 EV charger if you're already sure you'll want one. Consider having the electrician install and commission the actual charger during construction. Everything is open, the electrician is there anyway, and the finished installation looks so much cleaner than a bunch of exposed conduit added later. Obviously confirm the load design and whether the charger is worth buying now."}, {"id": "electrical-tech-38", "subject": "Automated blind power", "lesson": "One more little future-proofing idea: think about electrical power or low-voltage wiring near your windows in case you ever want automated blinds. Even if you don't buy them right away, getting the power location sorted before drywall is much easier. Ask the blind supplier/electrician where it needs to come out so you don't end up with an ugly visible cord."}]}, {"slug": "before-drywall", "icon": "drywall", "name": "Before Drywall", "items": [{"id": "before-drywall-01", "subject": "Visit construction safely", "lesson": "Please go onto the construction site regularly (arrange it with the builder and follow their safety rules). It's your property and you're paying for it—don't be shy about wanting to understand what's going on. You catch so many little things just by seeing the work before it gets covered up."}, {"id": "before-drywall-02", "subject": "Photograph every open wall", "lesson": "Take SO MANY pictures and videos when the studs are exposed. Seriously, every wall, ceiling, corner, electrical run, water pipe and drain. Five or ten years later, when you want to hang something or find a problem, you'll be so happy you can see exactly what's behind the drywall."}, {"id": "before-drywall-03", "subject": "Curtain rod backing", "lesson": "This one is painfully personal: my curtain rods have pulled anchors right out of the drywall, and now I've got a bunch of damaged holes above the windows. I don't know exactly where there's solid backing, so even a simple curtain rod has become a headache. Photograph above EVERY window and ask about adding blocking where rods/blinds might mount."}, {"id": "before-drywall-04", "subject": "TV and shelf mounting", "lesson": "While you can see the studs, take photos and measurements so you know where to mount a TV, floating shelf, mirror or anything heavy later. It's so much easier than guessing and putting holes in finished drywall. Also ask for backing wherever you already know something heavy will go."}, {"id": "before-drywall-05", "subject": "Ceiling framing", "lesson": "Don't just photograph the walls—photograph the CEILINGS too. You never know when you'll want to mount a projector, hanging light or something else overhead. Knowing where the joists and proper supports are makes planning much easier (and any heavy load still needs the right engineered support)."}, {"id": "before-drywall-06", "subject": "Kids' climbing/rope anchors", "lesson": "If you think you might want a kids' indoor climbing wall, hanging rope or swing, think about it during framing. Seeing the studs and joists helps you plan, but don't just screw a swing into any random stud—get proper structural support designed for the load. This is much easier before the walls close."}, {"id": "before-drywall-07", "subject": "Drain and sewer routes", "lesson": "Take photos of where the drain stacks and sewer lines run from upstairs down toward the basement/crawl space. Imagine drilling to hang a picture and accidentally hitting a sewage pipe—that's exactly the kind of nightmare I want to avoid. Mark the locations while everything is visible."}, {"id": "before-drywall-08", "subject": "Electrical cable routes", "lesson": "Same thing for the electrical cables: photograph their exact routes before drywall. When you later want to install a curtain rod, TV mount, cabinet or picture, you'll know where NOT to drill. Take photos from far enough back that you can identify the wall later."}, {"id": "before-drywall-09", "subject": "Conduit for future changes", "lesson": "I learned that in a wood-frame home the cables are often stapled to the studs. You can't assume you can pull an existing cable and magically fish a new one through. If you think you might need to replace or add cables later, have proper conduit with accessible ends installed now. PVC conduit is cheap when the walls are bare."}, {"id": "before-drywall-10", "subject": "Service panel access", "lesson": "Before drywall goes up, ask the plumber to point out every valve, shower/tub connection and piece of equipment that may need maintenance. Where will you reach it after the walls are finished? I would much rather plan a neat access panel now than cut open drywall when a leak happens."}, {"id": "before-drywall-11", "subject": "Outlet/ethernet walkthrough", "lesson": "Walk through each room with the actual furniture layout in mind. Could the TV go on either wall? Where does the bed go? Where will a vacuum charge? Are there outlets near windows for motorized blinds, beside toilets for bidets and where the devices sit below the TV? Adding one more outlet/Cat6 run now is usually much cheaper."}, {"id": "before-drywall-12", "subject": "Lighting position walkthrough", "lesson": "Check the pot lights, bedroom light groups, dining chandelier and kitchen pendants against where the furniture and island will ACTUALLY go. A fancy dropped ceiling or chandelier can accidentally force a particular furniture layout. Fixing those positions while everything is open is much easier."}]}, {"slug": "finishes-fixtures", "icon": "finishes", "name": "Finishes & Fixtures", "items": [{"id": "finishes-fixtures-01", "subject": "Avoid vessel sinks", "lesson": "Those fancy raised glass bowl sinks with tall faucets? They SUCK to clean. We had the look, but wiping around the bowl, underneath it and around the faucet is such a pain. I wouldn't do it again, especially not in a bathroom people use every day."}, {"id": "finishes-fixtures-02", "subject": "Undermount/flush sinks", "lesson": "I'd take a simple, nice undermount sink any day. Think carefully about the reveal/edge where the sink meets the countertop: little ledges can trap water, grime and eventually gross-looking caulking. I want a clean, easy-to-wipe transition instead of a fancy detail that's a maintenance headache."}, {"id": "finishes-fixtures-03", "subject": "Shower glass splash control", "lesson": "I really like my walk-in shower and sliding glass doors, but water STILL splashes out at the bottom. It's not a flood, but it's enough that you'll notice it on the bathroom floor. Make sure the threshold, glass seals, drainage and floor outside the shower are planned properly, and expect to use a bath mat."}, {"id": "finishes-fixtures-04", "subject": "Shower waterproofing", "lesson": "Do not let anyone treat caulking as the thing keeping water out of your walls or floor. With a glass walk-in shower, water can get out at the bottom and a bad waterproofing job can leak into what's underneath. I'd be very particular about the actual waterproofing system, slopes and testing before tiling."}, {"id": "finishes-fixtures-05", "subject": "Spa shower fittings", "lesson": "I love the spa setup in my shower: body sprays that shoot horizontally, a rainfall/waterfall-style showerhead and a handheld wand. It's a ton of water and feels like having a little private spa at home. If you like baths/showers and can afford the plumbing and water demand, it's a fun upgrade."}, {"id": "finishes-fixtures-06", "subject": "Large-format shower tile", "lesson": "I'd use bigger tiles rather than tiny mosaics in the shower. My bathroom tiles are roughly 1 ft by 2 ft, so I have fewer grout lines to deal with. That makes cleaning and future maintenance much more manageable."}, {"id": "finishes-fixtures-07", "subject": "Grout maintenance", "lesson": "The more grout lines you have, the more grout there is to crack, stain or repair. My neighbor used little mosaic tiles with a TON of grout lines and has ended up redoing grout in the shower every few years—roughly five years, from what they've told me. I've had to repair some grout too, even with my larger tiles. Something to think about before picking a beautiful but high-maintenance pattern."}, {"id": "finishes-fixtures-08", "subject": "Tile bathroom walls to ceiling", "lesson": "If the budget allows, I'd tile the bathroom walls all the way to the ceiling, especially around the tub/shower. Kids spray water everywhere, including areas you'd never expect. Exposed drywall around wet areas is just another thing to worry about. They'll probably still manage to splash the ceiling, but at least the walls are protected."}, {"id": "finishes-fixtures-09", "subject": "Toilet service clearance", "lesson": "Tiny detail, but look at how the toilet sits against the wall and nearby cabinetry. Can you actually get your hand behind it to CLEAN? Can you reach the bolts to replace the toilet seat/lid later? It's easy to install something that looks nice but is a pain every time you need to maintain it."}, {"id": "finishes-fixtures-10", "subject": "Avoid upward-facing light bowls", "lesson": "Don't buy those pretty bathroom lights shaped like cups, bowls or flowers that face UP. They collect dust and grime, and sometimes you need a special tool or have to dismantle the fixture just to clean it. Forward-facing ones aren't necessarily much better. For me, pot lights are the answer."}, {"id": "finishes-fixtures-11", "subject": "Main-floor marble/tile", "lesson": "I love the marble/tile flooring on my main floor. With kids spilling water and everyone coming in from outside, I can just mop it up without worrying about water sitting on wood. Obviously stone/tile has its own sealing and slip considerations, but for my family it's been fantastic."}, {"id": "finishes-fixtures-12", "subject": "Wood stairs", "lesson": "I have wooden stairs and honestly they've been fantastic. No real issues at all. I'd happily do wooden stairs again."}, {"id": "finishes-fixtures-13", "subject": "Bedroom carpet vs wood", "lesson": "Upstairs is hardwood because that's what we chose, but I sometimes wish we'd put carpet in the bedrooms. Carpet just feels cozier underfoot, especially for kids. On the other hand, I can always throw a nice rug over the hardwood, so this one is totally personal preference."}, {"id": "finishes-fixtures-14", "subject": "Soft-close cabinetry", "lesson": "Soft-close drawers and cupboard/closet doors are worth considering everywhere, especially with children slamming things. It's a small everyday convenience and keeps the noise down. I'd put it in wherever practical."}, {"id": "finishes-fixtures-15", "subject": "Modular closet shelves", "lesson": "Get proper shelving and hanging rods in every closet, and make the shelves adjustable. Kids grow, clothes change, and what you store in a closet today won't be what you store there in five years. Being able to move a shelf up or down is so helpful."}, {"id": "finishes-fixtures-16", "subject": "Customized pantry shelves", "lesson": "Definitely get shelving in the pantry, ideally customized to the actual dimensions. I don't want random dead space because standard shelves didn't fit. A well-organized pantry makes everyday life so much easier."}, {"id": "finishes-fixtures-17", "subject": "Quiet roller door catches", "lesson": "The metal ball-bearing-style door catches can get tight and make a nasty scratchy noise as they dry out or wear. Kids also find them harder to open. I prefer the plastic/nylon roller-style catches like the ones we have at work; they're quieter and easier to adjust. Small detail, but I notice it."}, {"id": "finishes-fixtures-18", "subject": "Wall-mounted doorstops", "lesson": "Don't get fancy with doorstops installed in the FLOOR. I think that's a terrible idea. The basic ones on the wall are cheap, easy and do the job without putting a metal obstacle in the flooring. I'd choose wall-mounted ones again."}, {"id": "finishes-fixtures-19", "subject": "Kitchen storage", "lesson": "Lots and lots of storage in the kitchen. Between appliances, food, kids' stuff and all the random things that accumulate, you'll use it. I'd rather design useful drawers, cabinets and pantry shelves than realize afterward there's nowhere to put anything."}, {"id": "finishes-fixtures-20", "subject": "Range hood performance", "lesson": "Make sure the hood fan is actually strong enough for how you cook, not just pretty. Also think about how easy it is to clean the filters and get at the ducting. A powerful fan that's a nightmare to maintain isn't much fun."}, {"id": "finishes-fixtures-21", "subject": "Appliance brand reliability", "lesson": "My personal experience: Samsung appliances suck. I wouldn't buy them again. That's just based on what I've dealt with, not a scientific comparison—I'd spend time looking at reliability, repair options and parts availability before choosing appliances."}]}, {"slug": "exterior-yard", "icon": "exterior", "name": "Exterior & Yard", "items": [{"id": "exterior-yard-01", "subject": "Wood fence maintenance", "lesson": "Wooden fences are beautiful, but they need maintenance and staining/painting every few years—I'd plan on checking them around every three years. I had to replace mine after about TEN years because I couldn't access the other side to paint/protect it. If you can't maintain both faces, the fence can deteriorate even when your side looks okay."}, {"id": "exterior-yard-02", "subject": "Metal fence trade-off", "lesson": "I switched to a metal fence because I can basically power-wash it and it's easier for me to maintain long-term. But there's a trade-off: kids kicking soccer balls or basketballs into it can DENT the panels. So if your kids are going to use the fence as a goal, think carefully. Wood looks nicer to some people; metal is lower maintenance for me."}, {"id": "exterior-yard-03", "subject": "Fence/property line", "lesson": "My entire fence was on MY property, so the neighbor didn't have to contribute a cent when I replaced it. That also made the replacement decision mine. Before building, confirm exactly where the fence and property line are, and don't assume the neighbor is splitting the bill."}, {"id": "exterior-yard-04", "subject": "Avoid loose rock landscaping", "lesson": "I would NOT do lots of decorative rocks in the backyard again. Under the rocks is dirt, then more random rocks, and trying to dig it all out later is a huge pain. It sounds easy to change a yard later, but the amount of labor is ridiculous. I'd rather start with a practical plan."}, {"id": "exterior-yard-05", "subject": "Practical paved areas", "lesson": "Personally I'd use as much useful concrete/paving as the approved landscaping and drainage rules allow, with greenery where it makes sense. A solid, easy-to-clean surface is so much more useful for outdoor furniture, kids' activities or a future shed than a big patch of decorative rocks. I'm not saying pave literally everything—ask the architect what's permitted."}, {"id": "exterior-yard-06", "subject": "Confirm paving limits", "lesson": "The City of Vancouver has limits and requirements around hard surfaces, landscaping, drainage and green/permeable areas. So when I say 'more concrete,' I mean within whatever your approved site plan allows. Get the architect to work out the actual maximum before you decide how to use the backyard."}, {"id": "exterior-yard-07", "subject": "Future shed foundation", "lesson": "I'm convinced you'll eventually want a shed. Once you have kids, you need somewhere for bikes, balls, sports stuff, garden tools and all the random gear. I'd have a proper pad/foundation planned during construction rather than discover later that I need to excavate the backyard to put one in."}, {"id": "exterior-yard-08", "subject": "Multi-use shed pad", "lesson": "Even if you decide not to put a shed there, a nice concrete pad is still useful. Put an outdoor table on it, let the kids play with water there, whatever. To me it's not wasted space; it's flexible outdoor space."}, {"id": "exterior-yard-09", "subject": "Durable deck finishes", "lesson": "Front and back decks are great. Just choose materials that will actually last in Vancouver weather and think about how you'll maintain them. I don't want to be repainting or replacing things constantly because we chose something that looked nice for six months."}, {"id": "exterior-yard-10", "subject": "Repeatable deck stain", "lesson": "If you stain/paint your wood deck or steps, choose a color you can easily buy again in the future. It's annoying when you need to touch up a step or replace one board and can't match the original finish. I would absolutely plan for future touch-ups."}, {"id": "exterior-yard-11", "subject": "Outdoor lighting", "lesson": "Think about using the backyard after dark, not just how it looks in daylight. Will you have enough light for friends to sit outside in summer, or to go out there in fall/winter when it gets dark early? I'd plan useful patio/backyard lighting from the start."}, {"id": "exterior-yard-12", "subject": "Outdoor outlets", "lesson": "While you're already wiring the exterior, think about where weather-rated outlets would be handy for decorations, outdoor tools or future equipment. This wasn't one of my big regrets, just a practical thing I'd review on the electrical plan rather than having to add it later."}, {"id": "exterior-yard-13", "subject": "Motion-activated security lights", "lesson": "I like motion-triggered exterior lights and pot lights around the house. They're convenient when you arrive home and useful for security. Plan the locations and switch/control logic, especially at the front gate and back entrance."}]}, {"slug": "handover-safety", "icon": "handover", "name": "Handover & Safety", "items": [{"id": "handover-safety-01", "subject": "Linked smoke/CO alarms", "lesson": "I think the smoke and carbon monoxide alarms in my house are linked, so when one goes off the others sound too. I really like that feature and would recommend asking for properly interconnected alarms throughout the required areas. Have the installer demonstrate that they actually work together."}, {"id": "handover-safety-02", "subject": "Fire sprinkler layout", "lesson": "If the design includes fire sprinklers, look carefully at where the heads end up—especially around kids' rooms and closets—and ask the designer about any appropriate approved guards or protection. Don't just move or cover sprinkler heads yourself; have the fire-protection contractor follow the approved design."}, {"id": "handover-safety-03", "subject": "Breaker panel orientation", "lesson": "Before the electrician disappears, make them walk you through the electrical panel. Which breaker controls the outdoor lights? Which one is the kitchen? I want everything clearly labelled so I'm not guessing when something needs to be shut off or repaired."}, {"id": "handover-safety-04", "subject": "Plumbing orientation", "lesson": "Get the plumber to physically show you the main shutoff, individual valves, water meter, fridge water shutoff, tankless heater and anything else you might need to touch. My mechanical closet is so cramped and confusing that I wish I'd had a much clearer explanation and layout from day one."}, {"id": "handover-safety-05", "subject": "Heating/ERV orientation", "lesson": "Have the mechanical contractor show you how to change filters, use the different temperature zones and service the ERV/fan coil/heat pump. I don't want to pay someone to explain a simple filter change years later, and I definitely want to know how the ventilation is supposed to work."}, {"id": "handover-safety-06", "subject": "Network/security orientation", "lesson": "Make sure you know where the router, switches, PoE devices, camera recorder/hard drive, alarm panel and backup battery all live. I use my phone to check the cameras, not a dedicated monitor. A big, accessible media panel makes troubleshooting so much less annoying."}, {"id": "handover-safety-07", "subject": "Organize construction photos", "lesson": "Keep all those construction photos and videos somewhere you can actually find them later—ideally by floor and room. Knowing that you took a photo of the studs is useless if it's buried among 5,000 other photos. Those pictures are gold when you're hanging curtains, mounting a TV or trying to avoid a drain pipe."}, {"id": "handover-safety-08", "subject": "Tenant-access planning", "lesson": "Before handover, think about the basement tenant situation again. If you need to get to the electrical panel, main water shutoff, mechanical equipment or under-stair storage, can you do it without unnecessarily entering a tenant's private space? I would much rather solve the access problem on the plans than fight it later."}, {"id": "handover-safety-09", "subject": "Keep as-built records", "lesson": "I'd keep the approved drawings, any as-built updates, permits, equipment manuals, warranties, paint/stain colors and contractor contacts together. This is the stuff you never think you'll need—until a pipe leaks, you want to match the deck stain or you need to find out what's behind a wall."}]}]</script>
+<script>
+(function(){
+  "use strict";
+  var CATS = JSON.parse(document.getElementById('data').textContent);
+  var KEY = 'duplex-checklist-v1';
+  var TOTAL = CATS.reduce(function(s,c){ return s + c.items.length; }, 0);
+  var done = new Set();
+  try { (JSON.parse(localStorage.getItem(KEY) || '[]')).forEach(function(id){ done.add(id); }); } catch(e) {}
+  var current = -1, filter = 'all';
+
+  var $ = function(id){ return document.getElementById(id); };
+  var grid = $('grid'), results = $('results'), search = $('search');
+
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(Array.from(done))); } catch(e) {} }
+  function catDone(ci){ return CATS[ci].items.filter(function(it){ return done.has(it.id); }).length; }
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function itemRow(it, ci, showCat){
+    var isDone = done.has(it.id);
+    var row = document.createElement('div');
+    row.className = 'item' + (isDone ? ' done' : '');
+    row.dataset.id = it.id;
+    row.innerHTML =
+      (showCat ? '' : '') +
+      '<button class="ck" role="checkbox" aria-checked="' + isDone + '" aria-label="Mark done: ' + esc(it.subject) + '">' +
+        '<svg viewBox="0 0 24 24"><path d="M4 12.5 L9.5 18 L20 6.5"/></svg></button>' +
+      '<div style="flex:1;min-width:0">' +
+        (showCat ? '<div class="catlabel grad-text">' + esc(CATS[ci].name.toUpperCase()) + '</div>' : '') +
+        '<div class="t">' + esc(it.subject) + '</div>' +
+        '<div class="d">' + esc(it.lesson) + '</div>' +
+      '</div>';
+    row.querySelector('.ck').addEventListener('click', function(){ toggle(it.id); });
+    return row;
+  }
+
+  function toggle(id){
+    if (done.has(id)) done.delete(id); else done.add(id);
+    save();
+    document.querySelectorAll('.item').forEach(function(row){
+      if (row.dataset.id === id) {
+        var on = done.has(id);
+        row.classList.toggle('done', on);
+        row.querySelector('.ck').setAttribute('aria-checked', on);
+      }
+    });
+    updateProgress();
+    if (current >= 0 && search.value.trim() === '') renderCatHead();
+    if (filter !== 'all' && current >= 0 && search.value.trim() === '') applyFilter();
+  }
+
+  function updateProgress(){
+    var n = done.size;
+    $('overallCount').textContent = n + ' of ' + TOTAL + ' lessons done';
+    var pct = TOTAL ? Math.round(n / TOTAL * 100) : 0;
+    $('ringPct').textContent = pct + '%';
+    $('ringFg').style.strokeDashoffset = (314.16 * (1 - n / TOTAL)).toFixed(2);
+    CATS.forEach(function(c, ci){
+      var d = catDone(ci), card = document.getElementById('card-' + ci);
+      if (!card) return;
+      card.classList.toggle('complete', d === c.items.length);
+      card.querySelector('.bar i').style.width = (c.items.length ? d / c.items.length * 100 : 0) + '%';
+      var st = card.querySelector('.status');
+      if (d === c.items.length) st.innerHTML = '<span class="pill-done">✓ Complete</span>';
+      else if (d === 0) st.textContent = 'Not started · ' + c.items.length + ' lessons';
+      else st.textContent = d + ' of ' + c.items.length + ' done';
+    });
+  }
+
+  // dashboard cards
+  CATS.forEach(function(c, ci){
+    var b = document.createElement('button');
+    b.className = 'ccard'; b.id = 'card-' + ci;
+    b.style.animationDelay = (ci * 70) + 'ms';
+    b.setAttribute('aria-label', 'Open ' + c.name);
+    b.innerHTML =
+      '<span class="checkbadge">✓</span>' +
+      '<span class="icon"><svg width="128" height="128" viewBox="0 0 120 120"><use href="#icon-' + c.icon + '"/></svg></span>' +
+      '<h2 class="grad-text">' + esc(c.name) + '</h2>' +
+      '<div class="status"></div>' +
+      '<div class="bar"><i style="width:0%"></i></div>' +
+      '<span class="explore">Explore</span>';
+    b.addEventListener('click', function(){ openCat(ci); });
+    grid.appendChild(b);
+  });
+
+  function renderCatHead(){
+    var c = CATS[current], d = catDone(current);
+    $('catStatus').textContent = d + ' of ' + c.items.length + ' done' + (d === c.items.length ? ' — complete ✓' : '');
+    $('catBar').style.width = (c.items.length ? d / c.items.length * 100 : 0) + '%';
+  }
+  function applyFilter(){
+    document.querySelectorAll('#catItems .item').forEach(function(row){
+      var on = done.has(row.dataset.id);
+      row.style.display = (filter === 'all' || (filter === 'done') === on) ? '' : 'none';
+    });
+  }
+  function openCat(ci){
+    current = ci; filter = 'all';
+    document.querySelectorAll('.seg button').forEach(function(x){ x.classList.toggle('act', x.dataset.f === 'all'); });
+    var c = CATS[ci];
+    $('catName').textContent = c.name;
+    $('catIcon').innerHTML = '<svg width="86" height="86" viewBox="0 0 120 120"><use href="#icon-' + c.icon + '"/></svg>';
+    renderCatHead();
+    var box = $('catItems'); box.innerHTML = '';
+    c.items.forEach(function(it, i){
+      var row = itemRow(it, ci, false);
+      row.style.animationDelay = Math.min(i * 35, 400) + 'ms';
+      box.appendChild(row);
+    });
+    $('view-dash').classList.remove('active');
+    var v = $('view-cat'); v.classList.remove('back-in'); v.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+  function goDash(back){
+    current = -1;
+    $('view-cat').classList.remove('active');
+    var v = $('view-dash'); v.classList.add('active');
+    if (back) { v.classList.remove('back-in'); void v.offsetWidth; v.classList.add('back-in'); }
+    window.scrollTo(0, 0);
+  }
+  $('backBtn').addEventListener('click', function(){ goDash(true); });
+  document.querySelectorAll('.seg button').forEach(function(x){
+    x.addEventListener('click', function(){
+      filter = x.dataset.f;
+      document.querySelectorAll('.seg button').forEach(function(y){ y.classList.toggle('act', y === x); });
+      applyFilter();
+    });
+  });
+
+  // search across everything
+  search.addEventListener('input', function(){
+    var q = search.value.trim().toLowerCase();
+    if (!q) { results.style.display = 'none'; grid.style.display = ''; return; }
+    grid.style.display = 'none'; results.style.display = '';
+    results.innerHTML = '';
+    var hits = 0;
+    CATS.forEach(function(c, ci){
+      c.items.forEach(function(it){
+        if ((it.subject + ' ' + it.lesson).toLowerCase().indexOf(q) >= 0) {
+          results.appendChild(itemRow(it, ci, true)); hits++;
+        }
+      });
+    });
+    if (!hits) results.innerHTML = '<div class="empty">No lessons match “' + esc(search.value.trim()) + '”.</div>';
+  });
+
+  $('resetBtn').addEventListener('click', function(){
+    if (!done.size) return;
+    if (confirm('Clear all ' + done.size + ' checkmarks and start over?')) {
+      done.clear(); save(); updateProgress();
+      document.querySelectorAll('.item.done').forEach(function(r){ r.classList.remove('done'); });
+    }
+  });
+
+  updateProgress();
+})();
+</script>
+</body>
+</html>

@@ -35,14 +35,14 @@ h1{font-size:clamp(44px,9vw,84px)}
 .intro{font-size:14px;max-width:560px;margin:0}
 .top{display:grid;gap:32px;align-items:center}
 @media(min-width:800px){.top{grid-template-columns:1fr auto}}
-.ringbox{display:flex;align-items:center;gap:22px;padding:22px 28px;border:1px solid var(--line);border-radius:28px;background:var(--surf)}
-.ring{width:128px;height:128px;position:relative;flex:none}
+.ringbox{display:flex;align-items:center;gap:16px;padding:14px 22px;border:1px solid var(--line);border-radius:22px;background:var(--surf)}
+.ring{width:72px;height:72px;position:relative;flex:none}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg);filter:drop-shadow(0 0 8px rgba(107,122,74,.3))}
-.ring circle{fill:none;stroke-width:9}
+.ring circle{fill:none;stroke-width:10}
 .ring .trk{stroke:rgba(51,48,42,.1)}
 .ring .val{stroke:url(#gring);stroke-linecap:round;transition:stroke-dashoffset .8s var(--ease)}
-.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:30px;font-weight:600;letter-spacing:-.02em}
-.ringbox p{margin:0}.ringbox strong{display:block;font-size:20px;font-weight:600}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:17px;font-weight:600;letter-spacing:-.02em}
+.ringbox p{margin:0}.ringbox strong{display:block;font-size:18px;font-weight:600}
 
 /* search */
 .search{display:block;position:relative;margin:40px 0 28px;color:#000}
@@ -51,25 +51,25 @@ h1{font-size:clamp(44px,9vw,84px)}
 .search input:focus{border-color:#6B7A4A;box-shadow:var(--glow)}
 
 /* cards */
-.cards{display:grid;gap:18px}
-@media(min-width:640px){.cards{grid-template-columns:repeat(2,1fr)}}
-@media(min-width:980px){.cards{grid-template-columns:repeat(3,1fr)}}
-.card{background:#FCFAF3;border:1px solid var(--line);box-shadow:0 10px 30px -18px rgba(90,80,50,.12);border-radius:28px;padding:10px 26px 26px;cursor:pointer;display:flex;flex-direction:column;transition:transform .35s var(--ease),box-shadow .35s,border-color .35s}
+.cards{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+@media(min-width:640px){.cards{grid-template-columns:repeat(3,1fr);gap:16px}}
+@media(min-width:980px){.cards{grid-template-columns:repeat(4,1fr)}}
+.card{background:#FCFAF3;border:1px solid var(--line);box-shadow:0 10px 30px -18px rgba(90,80,50,.12);border-radius:22px;padding:6px 16px 16px;cursor:pointer;display:flex;flex-direction:column;text-align:left;transition:transform .35s var(--ease),box-shadow .35s,border-color .35s}
 .intro-anim .card{animation:up .7s var(--ease) both;animation-delay:calc(var(--i)*70ms)}
 @keyframes up{from{opacity:0;transform:translateY(22px)}}
 @media(hover:hover){.card:hover{transform:translateY(-5px);border-color:#B7BF8E;box-shadow:0 24px 50px -24px rgba(90,80,50,.28)}
   .card:hover .ico{filter:drop-shadow(0 8px 14px rgba(107,122,74,.3))}}
-.art{position:relative;width:min(230px,80%);margin:0 auto}
+.art{display:block;position:relative;width:min(120px,78%);margin:0 auto}
 .ico{display:block;width:100%;height:auto;overflow:visible;transition:filter .5s}
-.card h2{font-size:30px;margin:2px 0 8px}
-.status{font-size:14px;min-height:24px;display:flex;align-items:center}
+.card .grad{display:block;font-size:18px;margin:2px 0 4px}
+.card .status{margin-bottom:8px}.card .bar{margin:auto 0 0}
+.status{font-size:13px;min-height:22px;display:flex;align-items:center}
 .status.ns{color:var(--grey)}.status.ip{color:#5C6636}
 .done-pill{display:inline-flex;align-items:center;gap:6px;background:#55612F;color:#fff;border-radius:999px;padding:3px 11px 3px 8px;font-size:13px;font-weight:600}
 .done-pill .mono{width:13px;height:13px;stroke-width:2.6}
-.bar{height:4px;border-radius:4px;background:rgba(51,48,42,.09);margin:12px 0 22px;overflow:hidden}
+.bar{display:block;height:4px;border-radius:4px;background:rgba(51,48,42,.09);margin:12px 0 22px;overflow:hidden}
 .bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#8A9455,#74824A,#5C6636);box-shadow:0 1px 3px rgba(90,80,50,.2);transition:width .6s var(--ease)}
-.card .pill{align-self:center;margin-top:auto}
-.badge{position:absolute;right:6%;bottom:16%;width:30px;height:30px;border-radius:50%;background:#fff;color:#000;box-shadow:0 2px 8px rgba(90,80,50,.2);display:grid;place-items:center;opacity:0;transform:scale(.5);transition:opacity .4s,transform .5s var(--ease)}
+.badge{position:absolute;right:0;bottom:16%;width:24px;height:24px;border-radius:50%;background:#fff;color:#000;box-shadow:0 2px 8px rgba(90,80,50,.2);display:grid;place-items:center;opacity:0;transform:scale(.5);transition:opacity .4s,transform .5s var(--ease)}
 .complete .badge{opacity:1;transform:none}.card.complete{border-color:#B7BF8E}
 .complete .ico{filter:drop-shadow(0 6px 16px rgba(107,122,74,.45)) brightness(1.1)}
 .foot{text-align:center;margin-top:48px}.foot p{font-size:13px;margin:14px 0 0}
@@ -207,9 +207,9 @@ h1{font-size:clamp(44px,9vw,84px)}
 
   $('cards').innerHTML = CATS.map(function(c, i){
     total += c.items.length;
-    return '<article class="card" style="--i:' + i + '" data-slug="' + c.slug + '"><div class="art">' + ICONS[c.icon] +
-      '<span class="badge">' + CHECK + '</span></div><h2 class="grad">' + esc(c.name) + '</h2><div class="status"></div>' +
-      '<div class="bar"><i></i></div><button class="pill" aria-label="Explore ' + esc(c.name) + '">Explore</button></article>';
+    return '<button class="card" style="--i:' + i + '" data-slug="' + c.slug + '"><span class="art">' + ICONS[c.icon] +
+      '<span class="badge">' + CHECK + '</span></span><span class="grad">' + esc(c.name) + '</span><span class="status"></span>' +
+      '<span class="bar"><i></i></span></button>';
   }).join('');
   setTimeout(function(){ $('cards').classList.remove('intro-anim'); }, 1400);
   var C = 2 * Math.PI * 52, shownPct = 0;

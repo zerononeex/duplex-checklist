@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#F4EFE3">
 <title>Building a Duplex — Lessons From Mine</title>
 <style>
-:root{--ease:cubic-bezier(0.32,0.72,0,1);--grey:#9a9aad;--line:rgba(255,255,255,.1);--surf:rgba(255,255,255,.045);
-  --grad:linear-gradient(100deg,#a9c6ff,#4f7cff 55%,#7a5cff);--glow:0 0 14px rgba(79,124,255,.55)}
+:root{--ease:cubic-bezier(0.32,0.72,0,1);--grey:#8D8474;--line:#E3D9BE;--surf:#FCFAF3;
+  --grad:linear-gradient(100deg,#5C6636,#74824A 55%,#8A9455);--glow:0 0 0 3px rgba(107,122,74,.28)}
 *{box-sizing:border-box}
-html{background:#000}
-body{margin:0;background:#000;color:#fff;font:16px/1.55 -apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+html{background:#F4EFE3}
+body{margin:0;background:#F4EFE3;color:#33302A;font:16px/1.55 -apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:1120px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 20px 56px}
 .view{animation:viewIn .32s var(--ease) both}
 #cat{max-width:760px;margin:0 auto;animation-name:catIn}
@@ -21,9 +21,10 @@ body{margin:0;background:#000;color:#fff;font:16px/1.55 -apple-system,"SF Pro Di
 .grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:600;letter-spacing:-.02em;line-height:1.08;margin:0}
 .muted{color:var(--grey)}
 button{font:inherit;color:inherit;cursor:pointer}
-:focus-visible{outline:2px solid #7f9cff;outline-offset:3px}
-.pill{background:none;border:1px solid rgba(140,160,255,.45);border-radius:999px;padding:10px 26px;font-size:14px;color:#e6e9ff;transition:border-color .2s,box-shadow .2s,background .2s}
-.pill:hover{border-color:#7f9cff;box-shadow:var(--glow)}
+::selection{background:rgba(107,122,74,.25)}
+:focus-visible{outline:2px solid #6B7A4A;outline-offset:3px}
+.pill{background:none;border:1px solid #5C6636;border-radius:999px;padding:10px 26px;font-size:14px;color:#5C6636;transition:border-color .2s,box-shadow .2s,background .2s}
+.pill:hover{background:rgba(107,122,74,.08)}
 .mono{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
 /* hero */
@@ -35,79 +36,79 @@ h1{font-size:clamp(44px,9vw,84px)}
 @media(min-width:800px){.top{grid-template-columns:1fr auto}}
 .ringbox{display:flex;align-items:center;gap:22px;padding:22px 28px;border:1px solid var(--line);border-radius:28px;background:var(--surf)}
 .ring{width:128px;height:128px;position:relative;flex:none}
-.ring svg{width:100%;height:100%;transform:rotate(-90deg);filter:drop-shadow(0 0 10px rgba(79,124,255,.55))}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg);filter:drop-shadow(0 0 8px rgba(107,122,74,.3))}
 .ring circle{fill:none;stroke-width:9}
-.ring .trk{stroke:rgba(255,255,255,.08)}
+.ring .trk{stroke:rgba(51,48,42,.1)}
 .ring .val{stroke:url(#gring);stroke-linecap:round;transition:stroke-dashoffset .8s var(--ease)}
 .ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:30px;font-weight:600;letter-spacing:-.02em}
 .ringbox p{margin:0}.ringbox strong{display:block;font-size:20px;font-weight:600}
 
 /* search */
-.search{display:block;position:relative;margin:40px 0 28px;color:var(--grey)}
+.search{display:block;position:relative;margin:40px 0 28px;color:#000}
 .search .mono{position:absolute;left:18px;top:50%;transform:translateY(-50%);width:18px;height:18px}
-.search input{width:100%;background:#0b0b10;border:1px solid var(--line);border-radius:999px;padding:15px 20px 15px 48px;color:#fff;font:inherit;font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s}
-.search input:focus{border-color:rgba(127,156,255,.6);box-shadow:var(--glow)}
+.search input{width:100%;background:#FCFAF3;border:1px solid var(--line);border-radius:999px;padding:15px 20px 15px 48px;color:#33302A;font:inherit;font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s}
+.search input:focus{border-color:#6B7A4A;box-shadow:var(--glow)}
 
 /* cards */
 .cards{display:grid;gap:18px}
 @media(min-width:640px){.cards{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:980px){.cards{grid-template-columns:repeat(3,1fr)}}
-.card{background:#0b0b10;border:1px solid var(--line);border-radius:28px;padding:10px 26px 26px;cursor:pointer;display:flex;flex-direction:column;transition:transform .35s var(--ease),box-shadow .35s,border-color .35s}
+.card{background:#FCFAF3;border:1px solid var(--line);box-shadow:0 10px 30px -18px rgba(90,80,50,.12);border-radius:28px;padding:10px 26px 26px;cursor:pointer;display:flex;flex-direction:column;transition:transform .35s var(--ease),box-shadow .35s,border-color .35s}
 .intro-anim .card{animation:up .7s var(--ease) both;animation-delay:calc(var(--i)*70ms)}
 @keyframes up{from{opacity:0;transform:translateY(22px)}}
-@media(hover:hover){.card:hover{transform:translateY(-5px);border-color:rgba(127,156,255,.32);box-shadow:0 24px 60px -24px rgba(79,124,255,.6)}
-  .card:hover .ico{filter:drop-shadow(0 0 22px rgba(90,120,255,.55))}}
+@media(hover:hover){.card:hover{transform:translateY(-5px);border-color:#B7BF8E;box-shadow:0 24px 50px -24px rgba(90,80,50,.28)}
+  .card:hover .ico{filter:drop-shadow(0 8px 14px rgba(107,122,74,.3))}}
 .art{position:relative;width:min(230px,80%);margin:0 auto}
 .ico{display:block;width:100%;height:auto;overflow:visible;transition:filter .5s}
 .card h2{font-size:30px;margin:2px 0 8px}
 .status{font-size:14px;min-height:24px;display:flex;align-items:center}
-.status.ns{color:var(--grey)}.status.ip{color:#c9d6ff}
-.done-pill{display:inline-flex;align-items:center;gap:6px;background:#1f9d55;color:#fff;border-radius:999px;padding:3px 11px 3px 8px;font-size:13px;font-weight:600}
+.status.ns{color:var(--grey)}.status.ip{color:#5C6636}
+.done-pill{display:inline-flex;align-items:center;gap:6px;background:#55612F;color:#fff;border-radius:999px;padding:3px 11px 3px 8px;font-size:13px;font-weight:600}
 .done-pill .mono{width:13px;height:13px;stroke-width:2.6}
-.bar{height:4px;border-radius:4px;background:rgba(255,255,255,.08);margin:12px 0 22px;overflow:hidden}
-.bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#6f9bff,#4f7cff,#7a5cff);box-shadow:0 0 10px rgba(79,124,255,.8);transition:width .6s var(--ease)}
+.bar{height:4px;border-radius:4px;background:rgba(51,48,42,.09);margin:12px 0 22px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#8A9455,#74824A,#5C6636);box-shadow:0 1px 3px rgba(90,80,50,.2);transition:width .6s var(--ease)}
 .card .pill{align-self:center;margin-top:auto}
-.badge{position:absolute;right:6%;bottom:16%;width:30px;height:30px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center;opacity:0;transform:scale(.5);transition:opacity .4s,transform .5s var(--ease)}
-.complete .badge{opacity:1;transform:none}
-.complete .ico{filter:drop-shadow(0 0 20px rgba(110,140,255,.85)) brightness(1.15)}
+.badge{position:absolute;right:6%;bottom:16%;width:30px;height:30px;border-radius:50%;background:#fff;color:#000;box-shadow:0 2px 8px rgba(90,80,50,.2);display:grid;place-items:center;opacity:0;transform:scale(.5);transition:opacity .4s,transform .5s var(--ease)}
+.complete .badge{opacity:1;transform:none}.card.complete{border-color:#B7BF8E}
+.complete .ico{filter:drop-shadow(0 6px 16px rgba(107,122,74,.45)) brightness(1.1)}
 .foot{text-align:center;margin-top:48px}.foot p{font-size:13px;margin:14px 0 0}
 
 /* icon artwork (shared gradients in #defs) */
-.ico polygon,.ico path{stroke:#dfe6ff;stroke-opacity:.7;stroke-width:.8;stroke-linejoin:round}
+.ico polygon,.ico path{stroke:#E9EDD8;stroke-opacity:.7;stroke-width:.8;stroke-linejoin:round}
 .ico .l{fill:url(#gl);fill-opacity:.88}.ico .r{fill:url(#gr);fill-opacity:.9}.ico .t{fill:url(#gt);fill-opacity:.92}
-.ico .b{fill:#1b2bb8;fill-opacity:.45;stroke-opacity:.35}.ico .w{fill:#e9eeff}.ico .f{fill:url(#gt);fill-opacity:.55}
-#pf polygon{stroke:#dfe6ff;stroke-width:.8;stroke-linejoin:round}.p1{fill:url(#gp);stroke-opacity:.55}.p2{fill:#2a40d8;fill-opacity:.28;stroke-opacity:.35}
-.ico .k{fill:#05082c;fill-opacity:.9}.ico .o{fill:#060a34}.ico .d{fill:url(#gs);stroke-opacity:.8}
+.ico .b{fill:#6B7A4A;fill-opacity:.45;stroke-opacity:.35}.ico .w{fill:#F4F6E4}.ico .f{fill:url(#gt);fill-opacity:.55}
+#pf polygon{stroke:#E9EDD8;stroke-width:.8;stroke-linejoin:round}.p1{fill:url(#gp);stroke-opacity:.55}.p2{fill:#6B7A4A;fill-opacity:.28;stroke-opacity:.35}
+.ico .k{fill:#3E4626;fill-opacity:.9}.ico .o{fill:#3E4626}.ico .d{fill:url(#gs);stroke-opacity:.8}
 .ico .hl{fill:#fff;opacity:.7}.ico .te,.ico .tb,.ico .th,.ico .st{fill:none;stroke-linecap:round}
-.ico .te{stroke:#dfe6ff;stroke-opacity:.75}.ico .tb{stroke:url(#gtube);stroke-opacity:1}.ico .th{stroke:#fff;stroke-opacity:.4;stroke-width:2.5}
-.ico .st{stroke:#cfe0ff;stroke-opacity:.7;stroke-width:2.5}
+.ico .te{stroke:#E9EDD8;stroke-opacity:.75}.ico .tb{stroke:url(#gtube);stroke-opacity:1}.ico .th{stroke:#fff;stroke-opacity:.4;stroke-width:2.5}
+.ico .st{stroke:#E9EDD8;stroke-opacity:.7;stroke-width:2.5}
 
 /* category view */
 .back{display:inline-flex;align-items:center;gap:6px;padding:8px 18px 8px 12px}
-.back .mono{width:18px;height:18px}
+.back .mono{width:18px;height:18px;color:#000}
 .chead{display:flex;align-items:center;gap:16px;margin:26px 0 6px}
 .chead .ico{width:84px;flex:none}
 .chead h2{font-size:clamp(32px,7vw,48px)}
 .chead + .status{margin-top:6px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:4px;margin:6px 0 18px;background:var(--surf)}
 .seg button{background:none;border:0;border-radius:999px;padding:7px 18px;font-size:14px;color:var(--grey);transition:background .25s,color .25s}
-.seg button[aria-pressed=true]{background:rgba(79,124,255,.22);color:#fff;box-shadow:inset 0 0 0 1px rgba(127,156,255,.45)}
+.seg button[aria-pressed=true]{background:linear-gradient(135deg,#8A9455,#74824A,#5C6636);color:#fff}
 .list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-.item{display:flex;gap:14px;background:#0b0b10;border:1px solid var(--line);border-radius:22px;padding:16px 20px 18px 12px;transition:opacity .4s}
+.item{display:flex;gap:14px;background:#FCFAF3;border:1px solid var(--line);border-radius:22px;padding:16px 20px 18px 12px;transition:opacity .4s}
 .item h3{font-size:17px;font-weight:600;margin:8px 0 6px;line-height:1.3}
-.item h3 span{background:linear-gradient(currentColor,currentColor) no-repeat 0 55%/0 1.5px;transition:background-size .45s var(--ease),color .4s}
-.item p{margin:0;color:#c9c9d6;font-size:15px;transition:color .4s}
-.tag{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7f9cff;margin-top:8px}
+.item h3 span{background:linear-gradient(#A39B87,#A39B87) no-repeat 0 55%/0 1.5px;transition:background-size .45s var(--ease),color .4s}
+.item p{margin:0;color:#4E4A3E;font-size:15px;transition:color .4s}
+.tag{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#5C6636;margin-top:8px}
 .tag + h3{margin-top:2px}
-.item.done h3{color:var(--grey)}.item.done h3 span{background-size:100% 1.5px}.item.done p{color:#6c6c7e}
+.item.done h3{color:#A8A08C}.item.done h3 span{background-size:100% 1.5px}.item.done p{color:#A8A08C}
 .chk{flex:none;width:44px;height:44px;border:0;background:none;padding:8px;border-radius:50%}
 .chk i{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
-  background:linear-gradient(#0b0b10,#0b0b10) padding-box,linear-gradient(135deg,#a9c6ff,#4f7cff,#7a5cff) border-box;border:1.5px solid transparent;transition:background .3s,box-shadow .3s}
+  background:linear-gradient(#FCFAF3,#FCFAF3) padding-box,linear-gradient(135deg,#8A9455,#6B7A4A,#5C6636) border-box;border:1.5px solid transparent;transition:background .3s,box-shadow .3s}
 .chk svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:20;stroke-dashoffset:20;transition:stroke-dashoffset .35s var(--ease) .05s}
-.done .chk i{background:linear-gradient(135deg,#6f9bff,#4f7cff,#7a5cff) padding-box,linear-gradient(135deg,#a9c6ff,#4f7cff,#7a5cff) border-box}
+.done .chk i{background:linear-gradient(135deg,#8A9455,#74824A,#5C6636) padding-box,linear-gradient(135deg,#8A9455,#6B7A4A,#5C6636) border-box}
 .done .chk svg{stroke-dashoffset:0}
 .chk.pop i{animation:pop .5s var(--ease)}
-@keyframes pop{0%{transform:scale(.8)}45%{transform:scale(1.14);box-shadow:0 0 0 7px rgba(79,124,255,.25),0 0 22px rgba(79,124,255,.8)}100%{transform:none}}
+@keyframes pop{0%{transform:scale(.8)}45%{transform:scale(1.14);box-shadow:0 0 0 7px rgba(107,122,74,.2),0 0 18px rgba(107,122,74,.45)}100%{transform:none}}
 .empty{color:var(--grey);text-align:center;padding:30px 0}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media print{
@@ -123,15 +124,15 @@ h1{font-size:clamp(44px,9vw,84px)}
 </head>
 <body>
 <svg id="defs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-<linearGradient id="gl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3e6ff"/><stop offset="1" stop-color="#7f7cf0"/></linearGradient>
-<linearGradient id="gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a8dff"/><stop offset="1" stop-color="#1a2ee8"/></linearGradient>
-<linearGradient id="gt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1066"/><stop offset="1" stop-color="#4469ff"/></linearGradient>
-<linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3550ff" stop-opacity=".12"/><stop offset="1" stop-color="#2a3cc8" stop-opacity=".34"/></linearGradient>
-<linearGradient id="gtube" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2e0ff"/><stop offset=".45" stop-color="#5a82ff"/><stop offset="1" stop-color="#1d2fe0"/></linearGradient>
-<radialGradient id="gs" cx=".38" cy=".38" r=".7"><stop offset="0" stop-color="#eceeff"/><stop offset=".4" stop-color="#6d8cff"/><stop offset="1" stop-color="#1a2ad0"/></radialGradient>
-<radialGradient id="gu"><stop offset="0" stop-color="#3d5bff" stop-opacity=".35"/><stop offset="1" stop-color="#3d5bff" stop-opacity="0"/></radialGradient>
-<radialGradient id="gw"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".45" stop-color="#7d98ff" stop-opacity=".45"/><stop offset="1" stop-color="#4f7cff" stop-opacity="0"/></radialGradient>
-<linearGradient id="gring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9c6ff"/><stop offset=".55" stop-color="#4f7cff"/><stop offset="1" stop-color="#7a5cff"/></linearGradient>
+<linearGradient id="gl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F4F6E4"/><stop offset="1" stop-color="#B7BF8E"/></linearGradient>
+<linearGradient id="gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B7BF8E"/><stop offset="1" stop-color="#6B7A4A"/></linearGradient>
+<linearGradient id="gt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6B7A4A"/><stop offset="1" stop-color="#B7BF8E"/></linearGradient>
+<linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B7A4A" stop-opacity=".1"/><stop offset="1" stop-color="#6B7A4A" stop-opacity=".28"/></linearGradient>
+<linearGradient id="gtube" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4F6E4"/><stop offset=".45" stop-color="#B7BF8E"/><stop offset="1" stop-color="#6B7A4A"/></linearGradient>
+<radialGradient id="gs" cx=".38" cy=".38" r=".7"><stop offset="0" stop-color="#F4F6E4"/><stop offset=".4" stop-color="#B7BF8E"/><stop offset="1" stop-color="#6B7A4A"/></radialGradient>
+<radialGradient id="gu"><stop offset="0" stop-color="#6B7A4A" stop-opacity=".22"/><stop offset="1" stop-color="#B7BF8E" stop-opacity="0"/></radialGradient>
+<radialGradient id="gw"><stop offset="0" stop-color="#6B7A4A" stop-opacity=".4"/><stop offset=".45" stop-color="#B7BF8E" stop-opacity=".22"/><stop offset="1" stop-color="#B7BF8E" stop-opacity="0"/></radialGradient>
+<linearGradient id="gring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8A9455"/><stop offset="1" stop-color="#5C6636"/></linearGradient>
 <g id="pf"><ellipse cx="100" cy="140" rx="96" ry="50" fill="url(#gu)"/><polygon class="p2" points="112.1,184 107.8,185.8 102.7,186.8 97.3,186.8 92.2,185.8 87.9,184 18.6,144 15.4,141.5 13.8,138.5 13.8,135.5 15.4,132.5 18.6,130 87.9,90 92.2,88.2 97.3,87.2 102.7,87.2 107.8,88.2 112.1,90 181.4,130 184.6,132.5 186.2,135.5 186.2,138.5 184.6,141.5 181.4,144"/><polygon class="p1" points="112.1,175 107.8,176.8 102.7,177.8 97.3,177.8 92.2,176.8 87.9,175 18.6,135 15.4,132.5 13.8,129.5 13.8,126.5 15.4,123.5 18.6,121 87.9,81 92.2,79.2 97.3,78.2 102.7,78.2 107.8,79.2 112.1,81 181.4,121 184.6,123.5 186.2,126.5 186.2,129.5 184.6,132.5 181.4,135"/><ellipse cx="100" cy="128" rx="58" ry="30" fill="url(#gu)"/><ellipse cx="100" cy="186" rx="44" ry="9" fill="url(#gw)"/></g>
 </defs></svg>
 

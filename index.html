@@ -50,7 +50,7 @@
   .ccard .icon { display:flex; justify-content:center; margin-bottom:8px; }
   .ccard h2 { font-size:24px; font-weight:800; letter-spacing:-.02em; line-height:1.15; text-align:center; }
   .ccard .status { text-align:center; margin-top:9px; font-size:13.5px; color:var(--sub); min-height:24px; display:flex; align-items:center; justify-content:center; }
-  .pill-done { background:var(--grad); color:#fff; font-weight:700; font-size:12px; padding:4px 12px; border-radius:99px; letter-spacing:.02em; }
+  .pill-done { background:var(--grad); color:#fff; font-weight:700; font-size:12px; padding:4px 12px; border-radius:99px; letter-spacing:.02em; display:inline-flex; align-items:center; gap:5px; }
   .bar { height:6px; background:rgba(255,255,255,.09); border-radius:99px; overflow:hidden; margin-top:12px; }
   .bar i { display:block; height:100%; background:var(--grad); border-radius:99px; box-shadow:0 0 10px rgba(79,124,255,.7); transition:width .6s var(--ease); }
   .explore { display:block; margin:18px auto 0; width:fit-content; border:1px solid rgba(150,175,255,.5); color:#cfe0ff;
@@ -75,7 +75,7 @@
   @keyframes viewBack { from { opacity:0; transform:translateX(-26px); } to { opacity:1; transform:none; } }
   /* category page */
   .backbtn { background:transparent; border:1px solid rgba(150,175,255,.5); color:#cfe0ff; font-family:inherit;
-    font-size:13.5px; padding:9px 20px; border-radius:99px; cursor:pointer; letter-spacing:.02em; }
+    font-size:13.5px; padding:9px 20px; border-radius:99px; cursor:pointer; letter-spacing:.02em; display:inline-flex; align-items:center; gap:7px; }
   .cathead { display:flex; align-items:center; gap:18px; margin-top:24px; flex-wrap:wrap; }
   .cathead h2 { font-size:clamp(30px,6vw,44px); font-weight:800; letter-spacing:-.025em; line-height:1.08; }
   .cathead .cstatus { color:var(--sub); font-size:14.5px; margin-top:6px; }
@@ -225,7 +225,7 @@
 
   <!-- ============ CATEGORY ============ -->
   <section class="view" id="view-cat" aria-live="polite">
-    <button class="backbtn" id="backBtn">‹ Dashboard</button>
+    <button class="backbtn" id="backBtn"><svg width="9" height="15" viewBox="0 0 10 16" aria-hidden="true"><path d="M8.5 1.5 L2 8 L8.5 14.5" fill="none" stroke="#cfe0ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Dashboard</button>
     <div class="cathead">
       <span id="catIcon"></span>
       <div style="flex:1;min-width:230px">
@@ -305,7 +305,7 @@
       card.classList.toggle('complete', d === c.items.length);
       card.querySelector('.bar i').style.width = (c.items.length ? d / c.items.length * 100 : 0) + '%';
       var st = card.querySelector('.status');
-      if (d === c.items.length) st.innerHTML = '<span class="pill-done">✓ Complete</span>';
+      if (d === c.items.length) st.innerHTML = '<span class="pill-done"><svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5 L9.5 18 L20 6.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Complete</span>';
       else if (d === 0) st.textContent = 'Not started · ' + c.items.length + ' lessons';
       else st.textContent = d + ' of ' + c.items.length + ' done';
     });
@@ -318,7 +318,7 @@
     b.style.animationDelay = (ci * 70) + 'ms';
     b.setAttribute('aria-label', 'Open ' + c.name);
     b.innerHTML =
-      '<span class="checkbadge">✓</span>' +
+      '<span class="checkbadge"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5 L9.5 18 L20 6.5" fill="none" stroke="#04150a" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
       '<span class="icon"><svg width="128" height="128" viewBox="0 0 120 120"><use href="#icon-' + c.icon + '"/></svg></span>' +
       '<h2 class="grad-text">' + esc(c.name) + '</h2>' +
       '<div class="status"></div>' +
@@ -330,7 +330,7 @@
 
   function renderCatHead(){
     var c = CATS[current], d = catDone(current);
-    $('catStatus').textContent = d + ' of ' + c.items.length + ' done' + (d === c.items.length ? ' — complete ✓' : '');
+    $('catStatus').textContent = d + ' of ' + c.items.length + ' done' + (d === c.items.length ? ' — complete' : '');
     $('catBar').style.width = (c.items.length ? d / c.items.length * 100 : 0) + '%';
   }
   function applyFilter(){

@@ -1,403 +1,312 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
 <title>Building a Duplex — Lessons From Mine</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  :root {
-    --bg:#000; --card:rgba(255,255,255,.045); --card2:rgba(255,255,255,.07);
-    --line:rgba(255,255,255,.10); --txt:#fff; --sub:#9a9aad; --dim:#62626e;
-    --grad:linear-gradient(100deg,#a9c6ff 0%,#4f7cff 55%,#7a5cff 100%);
-    --ease:cubic-bezier(.32,.72,0,1);
-  }
-  html { background:var(--bg); }
-  body { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif; background:var(--bg); color:var(--txt); min-height:100vh; }
-  body::before { content:""; position:fixed; inset:0; pointer-events:none;
-    background:radial-gradient(600px 340px at 15% -60px, rgba(79,124,255,.20), transparent 65%),
-               radial-gradient(700px 380px at 90% 0%, rgba(122,92,255,.14), transparent 65%); }
-  .wrap { position:relative; max-width:1060px; margin:0 auto; padding:34px 18px 70px; }
-  .grad-text { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .eyebrow { font-size:12px; letter-spacing:.34em; color:var(--sub); font-weight:600; text-align:center; }
-  h1.hero { font-size:clamp(40px,8vw,68px); font-weight:800; letter-spacing:-.03em; text-align:center; line-height:1.04; margin-top:14px; }
-  .subhead { text-align:center; font-size:clamp(16px,3.4vw,21px); margin-top:14px; font-weight:500; }
-  .intro { text-align:center; color:var(--sub); font-size:14px; line-height:1.6; max-width:620px; margin:12px auto 0; }
-  /* overall progress */
-  .overall { display:flex; align-items:center; gap:20px; justify-content:center; margin:34px auto 6px; flex-wrap:wrap; }
-  .ringbox { position:relative; width:118px; height:118px; }
-  .ringbox svg { transform:rotate(-90deg); filter:drop-shadow(0 0 14px rgba(79,124,255,.45)); }
-  .ringpct { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-  .ringpct b { font-size:27px; letter-spacing:-.02em; }
-  .ringpct span { font-size:10px; letter-spacing:.18em; color:var(--sub); }
-  .overall .otext { font-size:15px; color:var(--sub); line-height:1.55; max-width:250px; }
-  .overall .otext b { color:#fff; font-size:19px; display:block; letter-spacing:-.01em; }
-  /* search */
-  .searchbar { max-width:560px; margin:26px auto 4px; }
-  .searchbar input { width:100%; background:var(--card); border:1px solid var(--line); border-radius:99px; color:#fff;
-    font-size:16px; padding:13px 20px; outline:none; font-family:inherit; }
-  .searchbar input:focus { border-color:rgba(122,160,255,.6); box-shadow:0 0 0 4px rgba(79,124,255,.18); }
-  .searchbar input::placeholder { color:var(--dim); }
-  /* dashboard grid */
-  .grid { display:grid; grid-template-columns:1fr; gap:16px; margin-top:26px; }
-  @media (min-width:640px){ .grid{ grid-template-columns:1fr 1fr; } }
-  @media (min-width:980px){ .grid{ grid-template-columns:1fr 1fr 1fr; } .grid .ccard:last-child{ grid-column:2; } }
-  .ccard { position:relative; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:26px;
-    padding:26px 22px 22px; color:#fff; font-family:inherit; cursor:pointer; width:100%;
-    transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s; animation:fadeUp .6s var(--ease) both; }
-  .ccard:hover { transform:translateY(-4px); border-color:rgba(140,170,255,.45); box-shadow:0 18px 44px rgba(47,92,255,.22); }
-  .ccard .icon { display:flex; justify-content:center; margin-bottom:8px; }
-  .ccard h2 { font-size:24px; font-weight:800; letter-spacing:-.02em; line-height:1.15; text-align:center; }
-  .ccard .status { text-align:center; margin-top:9px; font-size:13.5px; color:var(--sub); min-height:24px; display:flex; align-items:center; justify-content:center; }
-  .pill-done { background:var(--grad); color:#fff; font-weight:700; font-size:12px; padding:4px 12px; border-radius:99px; letter-spacing:.02em; display:inline-flex; align-items:center; gap:5px; }
-  .bar { height:6px; background:rgba(255,255,255,.09); border-radius:99px; overflow:hidden; margin-top:12px; }
-  .bar i { display:block; height:100%; background:var(--grad); border-radius:99px; box-shadow:0 0 10px rgba(79,124,255,.7); transition:width .6s var(--ease); }
-  .explore { display:block; margin:18px auto 0; width:fit-content; border:1px solid rgba(150,175,255,.5); color:#cfe0ff;
-    font-size:13px; padding:8px 26px; border-radius:99px; letter-spacing:.04em; }
-  .ccard.complete { border-color:rgba(120,220,160,.4); }
-  .ccard.complete .icon svg { filter:drop-shadow(0 0 20px rgba(90,220,160,.35)); }
-  .checkbadge { position:absolute; top:16px; right:16px; width:28px; height:28px; border-radius:50%; background:linear-gradient(140deg,#5eead4,#34c759);
-    display:none; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:#04150a; box-shadow:0 0 16px rgba(52,199,89,.55); }
-  .ccard.complete .checkbadge { display:flex; }
-  @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
-  /* footer */
-  .foot { text-align:center; margin-top:44px; }
-  .btn-ghost { background:transparent; border:1px solid var(--line); color:var(--sub); font-family:inherit; font-size:13.5px;
-    padding:10px 24px; border-radius:99px; cursor:pointer; }
-  .btn-ghost:hover { color:#fff; border-color:rgba(255,255,255,.35); }
-  .foot p { color:var(--dim); font-size:12.5px; margin-top:16px; line-height:1.6; }
-  /* views */
-  .view { display:none; }
-  .view.active { display:block; animation:viewIn .38s var(--ease) both; }
-  @keyframes viewIn { from { opacity:0; transform:translateX(26px) scale(.995); } to { opacity:1; transform:none; } }
-  .view.back-in { animation:viewBack .38s var(--ease) both; }
-  @keyframes viewBack { from { opacity:0; transform:translateX(-26px); } to { opacity:1; transform:none; } }
-  /* category page */
-  .backbtn { background:transparent; border:1px solid rgba(150,175,255,.5); color:#cfe0ff; font-family:inherit;
-    font-size:13.5px; padding:9px 20px; border-radius:99px; cursor:pointer; letter-spacing:.02em; display:inline-flex; align-items:center; gap:7px; }
-  .cathead { display:flex; align-items:center; gap:18px; margin-top:24px; flex-wrap:wrap; }
-  .cathead h2 { font-size:clamp(30px,6vw,44px); font-weight:800; letter-spacing:-.025em; line-height:1.08; }
-  .cathead .cstatus { color:var(--sub); font-size:14.5px; margin-top:6px; }
-  .cathead .bar { max-width:420px; }
-  .seg { display:inline-flex; background:var(--card); border:1px solid var(--line); border-radius:99px; padding:3px; margin-top:22px; }
-  .seg button { border:none; background:transparent; color:var(--sub); font-family:inherit; font-size:13px; font-weight:600;
-    padding:7px 18px; border-radius:99px; cursor:pointer; }
-  .seg button.act { background:var(--grad); color:#fff; }
-  .items { margin-top:20px; display:flex; flex-direction:column; gap:12px; }
-  .item { display:flex; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px 18px; animation:fadeUp .5s var(--ease) both; }
-  .ck { flex:none; width:29px; height:29px; border-radius:50%; border:2px solid transparent; margin-top:2px; cursor:pointer; position:relative;
-    background:linear-gradient(#0b0b10,#0b0b10) padding-box, var(--grad) border-box; display:flex; align-items:center; justify-content:center; transition:transform .18s var(--ease); }
-  .ck:active { transform:scale(.86); }
-  .ck:focus-visible, .ccard:focus-visible, .backbtn:focus-visible, .seg button:focus-visible, .btn-ghost:focus-visible { outline:2px solid #7ab0ff; outline-offset:3px; }
-  .ck svg { width:15px; height:15px; }
-  .ck svg path { stroke:#fff; stroke-width:3.2; fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:26; stroke-dashoffset:26; }
-  .item.done .ck { background:var(--grad) border-box; box-shadow:0 0 14px rgba(79,124,255,.55); }
-  .item.done .ck svg path { animation:draw .35s var(--ease) forwards; }
-  @keyframes draw { to { stroke-dashoffset:0; } }
-  .item .t { font-size:16.5px; font-weight:700; letter-spacing:-.01em; line-height:1.35; position:relative; width:fit-content; }
-  .item .t::after { content:""; position:absolute; left:0; top:54%; height:2px; width:0; background:#8b8b98; transition:width .35s var(--ease); }
-  .item.done .t { color:#77777f; }
-  .item.done .t::after { width:100%; }
-  .item .d { color:#c9c9d2; font-size:14.5px; line-height:1.65; margin-top:5px; transition:color .3s; }
-  .item.done .d { color:#5d5d66; }
-  .catlabel { font-size:11px; letter-spacing:.22em; font-weight:700; margin-bottom:7px; }
-  .empty { text-align:center; color:var(--dim); padding:44px 0; font-size:15px; }
-  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
-  @media print {
-    body { background:#fff; color:#000; } body::before { display:none; }
-    .searchbar, .foot, .backbtn, .seg, .explore { display:none !important; }
-    .view { display:none !important; } #view-cat.active, #view-dash { display:block !important; }
-    .item, .ccard { background:#fff; border-color:#ccc; color:#000; break-inside:avoid; }
-    .item .d { color:#333; } h1.hero, .ccard h2, .cathead h2 { color:#000; }
-  }
+:root{--ease:cubic-bezier(0.32,0.72,0,1);--grey:#9a9aad;--line:rgba(255,255,255,.1);--surf:rgba(255,255,255,.045);
+  --grad:linear-gradient(100deg,#a9c6ff,#4f7cff 55%,#7a5cff);--glow:0 0 14px rgba(79,124,255,.55)}
+*{box-sizing:border-box}
+html{background:#000}
+body{margin:0;background:#000;color:#fff;font:16px/1.55 -apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 20px 56px}
+.view{animation:viewIn .32s var(--ease) both}
+#cat{max-width:760px;margin:0 auto;animation-name:catIn}
+@keyframes viewIn{from{opacity:0;transform:scale(.985)}}
+@keyframes catIn{from{opacity:0;transform:translateX(28px) scale(.985)}}
+[hidden]{display:none!important}
+.grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:600;letter-spacing:-.02em;line-height:1.08;margin:0}
+.muted{color:var(--grey)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid #7f9cff;outline-offset:3px}
+.pill{background:none;border:1px solid rgba(140,160,255,.45);border-radius:999px;padding:10px 26px;font-size:14px;color:#e6e9ff;transition:border-color .2s,box-shadow .2s,background .2s}
+.pill:hover{border-color:#7f9cff;box-shadow:var(--glow)}
+.mono{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* hero */
+.eyebrow{font-size:12px;letter-spacing:.28em;color:var(--grey);margin:24px 0 14px}
+h1{font-size:clamp(44px,9vw,84px)}
+.sub{font-size:clamp(18px,2.6vw,22px);margin:16px 0 8px}
+.intro{font-size:14px;max-width:560px;margin:0}
+.top{display:grid;gap:32px;align-items:center}
+@media(min-width:800px){.top{grid-template-columns:1fr auto}}
+.ringbox{display:flex;align-items:center;gap:22px;padding:22px 28px;border:1px solid var(--line);border-radius:28px;background:var(--surf)}
+.ring{width:128px;height:128px;position:relative;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg);filter:drop-shadow(0 0 10px rgba(79,124,255,.55))}
+.ring circle{fill:none;stroke-width:9}
+.ring .trk{stroke:rgba(255,255,255,.08)}
+.ring .val{stroke:url(#gring);stroke-linecap:round;transition:stroke-dashoffset .8s var(--ease)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:30px;font-weight:600;letter-spacing:-.02em}
+.ringbox p{margin:0}.ringbox strong{display:block;font-size:20px;font-weight:600}
+
+/* search */
+.search{display:block;position:relative;margin:40px 0 28px;color:var(--grey)}
+.search .mono{position:absolute;left:18px;top:50%;transform:translateY(-50%);width:18px;height:18px}
+.search input{width:100%;background:#0b0b10;border:1px solid var(--line);border-radius:999px;padding:15px 20px 15px 48px;color:#fff;font:inherit;font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s}
+.search input:focus{border-color:rgba(127,156,255,.6);box-shadow:var(--glow)}
+
+/* cards */
+.cards{display:grid;gap:18px}
+@media(min-width:640px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.cards{grid-template-columns:repeat(3,1fr)}}
+.card{background:#0b0b10;border:1px solid var(--line);border-radius:28px;padding:10px 26px 26px;cursor:pointer;display:flex;flex-direction:column;transition:transform .35s var(--ease),box-shadow .35s,border-color .35s}
+.intro-anim .card{animation:up .7s var(--ease) both;animation-delay:calc(var(--i)*70ms)}
+@keyframes up{from{opacity:0;transform:translateY(22px)}}
+@media(hover:hover){.card:hover{transform:translateY(-5px);border-color:rgba(127,156,255,.32);box-shadow:0 24px 60px -24px rgba(79,124,255,.6)}
+  .card:hover .ico{filter:drop-shadow(0 0 22px rgba(90,120,255,.55))}}
+.art{position:relative;width:min(230px,80%);margin:0 auto}
+.ico{display:block;width:100%;height:auto;overflow:visible;transition:filter .5s}
+.card h2{font-size:30px;margin:2px 0 8px}
+.status{font-size:14px;min-height:24px;display:flex;align-items:center}
+.status.ns{color:var(--grey)}.status.ip{color:#c9d6ff}
+.done-pill{display:inline-flex;align-items:center;gap:6px;background:#1f9d55;color:#fff;border-radius:999px;padding:3px 11px 3px 8px;font-size:13px;font-weight:600}
+.done-pill .mono{width:13px;height:13px;stroke-width:2.6}
+.bar{height:4px;border-radius:4px;background:rgba(255,255,255,.08);margin:12px 0 22px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#6f9bff,#4f7cff,#7a5cff);box-shadow:0 0 10px rgba(79,124,255,.8);transition:width .6s var(--ease)}
+.card .pill{align-self:center;margin-top:auto}
+.badge{position:absolute;right:6%;bottom:16%;width:30px;height:30px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center;opacity:0;transform:scale(.5);transition:opacity .4s,transform .5s var(--ease)}
+.complete .badge{opacity:1;transform:none}
+.complete .ico{filter:drop-shadow(0 0 20px rgba(110,140,255,.85)) brightness(1.15)}
+.foot{text-align:center;margin-top:48px}.foot p{font-size:13px;margin:14px 0 0}
+
+/* icon artwork (shared gradients in #defs) */
+.ico polygon,.ico path{stroke:#dfe6ff;stroke-opacity:.7;stroke-width:.8;stroke-linejoin:round}
+.ico .l{fill:url(#gl);fill-opacity:.88}.ico .r{fill:url(#gr);fill-opacity:.9}.ico .t{fill:url(#gt);fill-opacity:.92}
+.ico .b{fill:#1b2bb8;fill-opacity:.45;stroke-opacity:.35}.ico .w{fill:#e9eeff}.ico .f{fill:url(#gt);fill-opacity:.55}
+#pf polygon{stroke:#dfe6ff;stroke-width:.8;stroke-linejoin:round}.p1{fill:url(#gp);stroke-opacity:.55}.p2{fill:#2a40d8;fill-opacity:.28;stroke-opacity:.35}
+.ico .k{fill:#05082c;fill-opacity:.9}.ico .o{fill:#060a34}.ico .d{fill:url(#gs);stroke-opacity:.8}
+.ico .hl{fill:#fff;opacity:.7}.ico .te,.ico .tb,.ico .th,.ico .st{fill:none;stroke-linecap:round}
+.ico .te{stroke:#dfe6ff;stroke-opacity:.75}.ico .tb{stroke:url(#gtube);stroke-opacity:1}.ico .th{stroke:#fff;stroke-opacity:.4;stroke-width:2.5}
+.ico .st{stroke:#cfe0ff;stroke-opacity:.7;stroke-width:2.5}
+
+/* category view */
+.back{display:inline-flex;align-items:center;gap:6px;padding:8px 18px 8px 12px}
+.back .mono{width:18px;height:18px}
+.chead{display:flex;align-items:center;gap:16px;margin:26px 0 6px}
+.chead .ico{width:84px;flex:none}
+.chead h2{font-size:clamp(32px,7vw,48px)}
+.chead + .status{margin-top:6px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:4px;margin:6px 0 18px;background:var(--surf)}
+.seg button{background:none;border:0;border-radius:999px;padding:7px 18px;font-size:14px;color:var(--grey);transition:background .25s,color .25s}
+.seg button[aria-pressed=true]{background:rgba(79,124,255,.22);color:#fff;box-shadow:inset 0 0 0 1px rgba(127,156,255,.45)}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.item{display:flex;gap:14px;background:#0b0b10;border:1px solid var(--line);border-radius:22px;padding:16px 20px 18px 12px;transition:opacity .4s}
+.item h3{font-size:17px;font-weight:600;margin:8px 0 6px;line-height:1.3}
+.item h3 span{background:linear-gradient(currentColor,currentColor) no-repeat 0 55%/0 1.5px;transition:background-size .45s var(--ease),color .4s}
+.item p{margin:0;color:#c9c9d6;font-size:15px;transition:color .4s}
+.tag{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7f9cff;margin-top:8px}
+.tag + h3{margin-top:2px}
+.item.done h3{color:var(--grey)}.item.done h3 span{background-size:100% 1.5px}.item.done p{color:#6c6c7e}
+.chk{flex:none;width:44px;height:44px;border:0;background:none;padding:8px;border-radius:50%}
+.chk i{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(#0b0b10,#0b0b10) padding-box,linear-gradient(135deg,#a9c6ff,#4f7cff,#7a5cff) border-box;border:1.5px solid transparent;transition:background .3s,box-shadow .3s}
+.chk svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:20;stroke-dashoffset:20;transition:stroke-dashoffset .35s var(--ease) .05s}
+.done .chk i{background:linear-gradient(135deg,#6f9bff,#4f7cff,#7a5cff) padding-box,linear-gradient(135deg,#a9c6ff,#4f7cff,#7a5cff) border-box}
+.done .chk svg{stroke-dashoffset:0}
+.chk.pop i{animation:pop .5s var(--ease)}
+@keyframes pop{0%{transform:scale(.8)}45%{transform:scale(1.14);box-shadow:0 0 0 7px rgba(79,124,255,.25),0 0 22px rgba(79,124,255,.8)}100%{transform:none}}
+.empty{color:var(--grey);text-align:center;padding:30px 0}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media print{
+  html,body,.card,.item{background:#fff!important;color:#000!important}
+  #dash,.back,.seg,.ico,#defs{display:none!important}
+  .grad{background:none;color:#000}
+  .item{border:0;border-bottom:1px solid #ccc;border-radius:0;break-inside:avoid}
+  .item p,.item.done p,.item.done h3{color:#333!important}
+  .chk i{background:#fff!important;border:1px solid #000}.chk svg{stroke:#000}
+  .bar{display:none}
+}
 </style>
 </head>
 <body>
+<svg id="defs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<linearGradient id="gl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3e6ff"/><stop offset="1" stop-color="#7f7cf0"/></linearGradient>
+<linearGradient id="gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a8dff"/><stop offset="1" stop-color="#1a2ee8"/></linearGradient>
+<linearGradient id="gt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1066"/><stop offset="1" stop-color="#4469ff"/></linearGradient>
+<linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3550ff" stop-opacity=".12"/><stop offset="1" stop-color="#2a3cc8" stop-opacity=".34"/></linearGradient>
+<linearGradient id="gtube" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2e0ff"/><stop offset=".45" stop-color="#5a82ff"/><stop offset="1" stop-color="#1d2fe0"/></linearGradient>
+<radialGradient id="gs" cx=".38" cy=".38" r=".7"><stop offset="0" stop-color="#eceeff"/><stop offset=".4" stop-color="#6d8cff"/><stop offset="1" stop-color="#1a2ad0"/></radialGradient>
+<radialGradient id="gu"><stop offset="0" stop-color="#3d5bff" stop-opacity=".35"/><stop offset="1" stop-color="#3d5bff" stop-opacity="0"/></radialGradient>
+<radialGradient id="gw"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".45" stop-color="#7d98ff" stop-opacity=".45"/><stop offset="1" stop-color="#4f7cff" stop-opacity="0"/></radialGradient>
+<linearGradient id="gring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9c6ff"/><stop offset=".55" stop-color="#4f7cff"/><stop offset="1" stop-color="#7a5cff"/></linearGradient>
+<g id="pf"><ellipse cx="100" cy="140" rx="96" ry="50" fill="url(#gu)"/><polygon class="p2" points="112.1,184 107.8,185.8 102.7,186.8 97.3,186.8 92.2,185.8 87.9,184 18.6,144 15.4,141.5 13.8,138.5 13.8,135.5 15.4,132.5 18.6,130 87.9,90 92.2,88.2 97.3,87.2 102.7,87.2 107.8,88.2 112.1,90 181.4,130 184.6,132.5 186.2,135.5 186.2,138.5 184.6,141.5 181.4,144"/><polygon class="p1" points="112.1,175 107.8,176.8 102.7,177.8 97.3,177.8 92.2,176.8 87.9,175 18.6,135 15.4,132.5 13.8,129.5 13.8,126.5 15.4,123.5 18.6,121 87.9,81 92.2,79.2 97.3,78.2 102.7,78.2 107.8,79.2 112.1,81 181.4,121 184.6,123.5 186.2,126.5 186.2,129.5 184.6,132.5 181.4,135"/><ellipse cx="100" cy="128" rx="58" ry="30" fill="url(#gu)"/><ellipse cx="100" cy="186" rx="44" ry="9" fill="url(#gw)"/></g>
+</defs></svg>
 
-<!-- ======= custom icon set: glossy isometric glass on floating platforms ======= -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <linearGradient id="gGlass" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#cfe4ff"/><stop offset=".45" stop-color="#4f7cff"/><stop offset="1" stop-color="#7a5cff"/>
-    </linearGradient>
-    <linearGradient id="gGlassSoft" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#eaf3ff"/><stop offset=".5" stop-color="#7ab0ff"/><stop offset="1" stop-color="#3b5bff"/>
-    </linearGradient>
-    <linearGradient id="gPlat" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#8fb4ff" stop-opacity=".5"/><stop offset="1" stop-color="#3b5bff" stop-opacity=".12"/>
-    </linearGradient>
-    <radialGradient id="gGlow" cx=".5" cy=".5" r=".5">
-      <stop offset="0" stop-color="#4f7cff" stop-opacity=".55"/><stop offset="1" stop-color="#4f7cff" stop-opacity="0"/>
-    </radialGradient>
-    <g id="plat">
-      <ellipse cx="60" cy="103" rx="42" ry="10" fill="url(#gGlow)"/>
-      <polygon points="60,84 102,95 60,108 18,95" fill="url(#gPlat)" stroke="#bcd2ff" stroke-opacity=".55" stroke-width="1"/>
-    </g>
-    <symbol id="icon-plans" viewBox="0 0 120 120">
-      <use href="#plat"/>
-      <polygon points="30,66 78,52 90,58 42,72" fill="url(#gGlassSoft)" opacity=".9"/>
-      <polygon points="34,42 46,38 46,64 34,68" fill="url(#gGlass)"/>
-      <polygon points="46,38 82,28 82,54 46,64" fill="url(#gGlassSoft)"/>
-      <polygon points="58,60 58,34 70,30 70,56" fill="url(#gGlass)" opacity=".92"/>
-      <polyline points="40,58 62,50 84,44" fill="none" stroke="#eaf3ff" stroke-width="1.6" opacity=".8"/>
-    </symbol>
-    <symbol id="icon-utilities" viewBox="0 0 120 120">
-      <use href="#plat"/>
-      <path d="M38,84 L38,64 Q38,54 48,54 L58,54" fill="none" stroke="url(#gGlass)" stroke-width="11" stroke-linecap="round"/>
-      <path d="M60,14 C60,14 82,40 82,56 a22,22 0 1 1 -44,0 C38,40 60,14 60,14 Z" fill="url(#gGlassSoft)" stroke="#dceaff" stroke-opacity=".7"/>
-      <ellipse cx="51" cy="50" rx="5" ry="9" fill="#fff" opacity=".45" transform="rotate(-18 51 50)"/>
-    </symbol>
-    <symbol id="icon-electrical" viewBox="0 0 120 120">
-      <use href="#plat"/>
-      <circle cx="60" cy="50" r="33" fill="url(#gGlassSoft)" stroke="#dceaff" stroke-opacity=".7"/>
-      <circle cx="60" cy="50" r="33" fill="none" stroke="#a9c6ff" stroke-width="1.4" opacity=".7"/>
-      <polygon points="64,26 44,54 58,54 52,76 76,46 61,46" fill="#eef5ff"/>
-    </symbol>
-    <symbol id="icon-drywall" viewBox="0 0 120 120">
-      <use href="#plat"/>
-      <g fill="url(#gGlass)">
-        <rect x="30" y="26" width="60" height="7" rx="2"/>
-        <rect x="30" y="71" width="60" height="7" rx="2"/>
-        <rect x="32" y="26" width="7" height="52" rx="2"/>
-        <rect x="48" y="26" width="7" height="52" rx="2" opacity=".85"/>
-        <rect x="65" y="26" width="7" height="52" rx="2" opacity=".7"/>
-        <rect x="81" y="26" width="7" height="52" rx="2" fill="url(#gGlassSoft)"/>
-      </g>
-    </symbol>
-    <symbol id="icon-finishes" viewBox="0 0 120 120">
-      <use href="#plat"/>
-      <path d="M42,80 L42,44 Q42,26 60,26 L74,26 Q86,26 86,38 L86,46" fill="none" stroke="url(#gGlass)" stroke-width="10" stroke-linecap="round"/>
-      <rect x="79" y="44" width="14" height="9" rx="3" fill="url(#gGlassSoft)"/>
-      <ellipse cx="60" cy="88" rx="30" ry="7" fill="url(#gGlassSoft)" opacity=".9"/>
-      <path d="M86,58 q3,6 0,9 q-3,-3 0,-9" fill="#a9c6ff" opacity=".85"/>
-    </symbol>
-    <symbol id="icon-exterior" viewBox="0 0 120 120">
-      <use href="#plat"/>
-      <rect x="56" y="58" width="8" height="26" rx="3" fill="url(#gGlass)"/>
-      <circle cx="60" cy="34" r="19" fill="url(#gGlassSoft)"/>
-      <circle cx="42" cy="48" r="13" fill="url(#gGlass)" opacity=".9"/>
-      <circle cx="78" cy="48" r="13" fill="url(#gGlass)" opacity=".8"/>
-      <circle cx="52" cy="28" r="5" fill="#fff" opacity=".5"/>
-    </symbol>
-    <symbol id="icon-handover" viewBox="0 0 120 120">
-      <use href="#plat"/>
-      <path d="M60,16 L90,26 V52 C90,72 76,84 60,90 C44,84 30,72 30,52 V26 Z" fill="url(#gGlassSoft)" stroke="#dceaff" stroke-opacity=".7"/>
-      <polyline points="45,52 56,63 76,40" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-    </symbol>
-  </defs>
-</svg>
-
-<div class="wrap">
-
-  <!-- ============ DASHBOARD ============ -->
-  <main class="view active" id="view-dash">
-    <div class="eyebrow">A PERSONAL CHECKLIST</div>
-    <h1 class="hero grad-text">Building a Duplex</h1>
-    <p class="subhead">Lessons from mine — so yours goes better.</p>
-    <p class="intro">Check off items as you go. These are my real experiences (including the regrets!); confirm code/technical details with your architect and trades.</p>
-
-    <div class="overall">
-      <div class="ringbox">
-        <svg width="118" height="118" viewBox="0 0 118 118">
-          <defs><linearGradient id="gRing" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#a9c6ff"/><stop offset=".55" stop-color="#4f7cff"/><stop offset="1" stop-color="#7a5cff"/>
-          </linearGradient></defs>
-          <circle cx="59" cy="59" r="50" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="10"/>
-          <circle id="ringFg" cx="59" cy="59" r="50" fill="none" stroke="url(#gRing)" stroke-width="10" stroke-linecap="round"
-                  stroke-dasharray="314.16" stroke-dashoffset="314.16" style="transition:stroke-dashoffset .7s cubic-bezier(.32,.72,0,1)"/>
-        </svg>
-        <div class="ringpct"><b id="ringPct">0%</b><span>DONE</span></div>
-      </div>
-      <div class="otext"><b id="overallCount">0 of 135 lessons done</b>Tap a card to open its checklist. Your checkmarks are saved in this browser as you go.</div>
+<main id="dash" class="wrap view">
+  <div class="top">
+    <header>
+      <p class="eyebrow">A PERSONAL CHECKLIST</p>
+      <h1 class="grad">Building a Duplex</h1>
+      <p class="sub">Lessons from mine — so yours goes better.</p>
+      <p class="intro muted">Check off items as you go. These are my real experiences (including the regrets!); confirm code/technical details with your architect and trades.</p>
+    </header>
+    <div class="ringbox">
+      <div class="ring"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="52"/><circle class="val" id="ringval" cx="60" cy="60" r="52"/></svg><b id="pct">0%</b></div>
+      <p><strong id="tally">0 of 135</strong><span class="muted">lessons done</span></p>
     </div>
+  </div>
+  <label class="search"><svg class="mono" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+    <input id="q" type="search" placeholder="Search all 135 lessons" aria-label="Search all lessons" autocomplete="off"></label>
+  <section id="cards" class="cards intro-anim"></section>
+  <section id="results" hidden><p id="rcount" class="muted"></p><ul class="list" id="rlist"></ul></section>
+  <footer class="foot">
+    <button class="pill" id="reset">Start over (clear all checkmarks)</button>
+    <p class="muted">Your progress is saved only in this browser.</p>
+  </footer>
+</main>
 
-    <div class="searchbar"><input id="search" type="search" placeholder="Search all 135 lessons…" aria-label="Search lessons" autocomplete="off"></div>
-
-    <div class="grid" id="grid"></div>
-    <div class="items" id="results" style="display:none"></div>
-
-    <div class="foot">
-      <button class="btn-ghost" id="resetBtn">Start over (clear all checkmarks)</button>
-      <p>Progress is saved only in this browser, on this device.<br>Built from a much-loved spreadsheet, upgraded because you deserve better than a spreadsheet.</p>
-    </div>
-  </main>
-
-  <!-- ============ CATEGORY ============ -->
-  <section class="view" id="view-cat" aria-live="polite">
-    <button class="backbtn" id="backBtn"><svg width="9" height="15" viewBox="0 0 10 16" aria-hidden="true"><path d="M8.5 1.5 L2 8 L8.5 14.5" fill="none" stroke="#cfe0ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Dashboard</button>
-    <div class="cathead">
-      <span id="catIcon"></span>
-      <div style="flex:1;min-width:230px">
-        <h2 class="grad-text" id="catName"></h2>
-        <div class="cstatus" id="catStatus"></div>
-        <div class="bar"><i id="catBar" style="width:0%"></i></div>
-      </div>
-    </div>
-    <div class="seg" role="group" aria-label="Filter items">
-      <button data-f="all" class="act">All</button><button data-f="remaining">Remaining</button><button data-f="done">Done</button>
-    </div>
-    <div class="items" id="catItems"></div>
-  </section>
-
-</div>
+<main id="cat" class="wrap view" hidden>
+  <button class="pill back" id="back"><svg class="mono" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>All categories</button>
+  <div class="chead"><span id="cicon"></span><h2 class="grad" id="cname"></h2></div>
+  <div class="status" id="cstatus"></div>
+  <div class="bar"><i id="cbar"></i></div>
+  <div class="seg" role="group" aria-label="Filter">
+    <button aria-pressed="true" data-f="all">All</button><button aria-pressed="false" data-f="rem">Remaining</button><button aria-pressed="false" data-f="done">Done</button>
+  </div>
+  <ul class="list" id="clist"></ul>
+  <p class="empty" id="cempty" hidden>Nothing here yet.</p>
+</main>
 
 <script type="application/json" id="data">[{"slug": "floor-plans", "icon": "plans", "name": "Floor Plans", "items": [{"id": "floor-plans-01", "subject": "Living room layouts", "lesson": "This is something I'd really think through before you commit to the floor plan. Imagine the TV on one wall, then imagine moving it to a different wall: where would the couch go, would you block a window or the view, and would you still have power and Cat6 in the right spots? I have custom shelving for a TV and it looks great, but it really locks me into one living-room layout. I wish I'd given myself more flexibility."}, {"id": "floor-plans-02", "subject": "Ceiling height", "lesson": "If you can convince your architect to give you 11- or 12-foot ceilings in the living room, do it if the budget and permitted height work! High ceilings feel amazing. Also, very important: the taller the ceiling, the bigger the Christmas tree you can put up."}, {"id": "floor-plans-03", "subject": "Dropped ceilings", "lesson": "I think dropped ceilings are absolutely beautiful. Just know that they can dictate where your dining table, kitchen island, chandelier and furniture go because the ceiling design is so specific. If the ceiling is high enough, that restriction matters less. I'd still consider them, but I'd decide the room layout first."}, {"id": "floor-plans-04", "subject": "Large kitchen island", "lesson": "If you have the room, go for a giant kitchen island. I love having outlets on mine, and the extra countertop space is fantastic for everyday family life. It's one of those things you'll use constantly, not just when you're entertaining."}, {"id": "floor-plans-05", "subject": "Microwave height", "lesson": "This sounds like a tiny detail, but don't mount the microwave so high that the kids can't reach it. As they get older, you'll want them to be able to heat up their own food (safely) without asking you every single time. Think about the height now, before cabinetry is ordered."}, {"id": "floor-plans-06", "subject": "Main-floor bathroom near rear entry", "lesson": "If you're putting a full bathroom on the main floor, I'd put it as close to the back door/garage entrance as you reasonably can. Kids come in absolutely filthy from playing outside. It's so much easier to send them straight into the bath instead of having them walk through the whole house tracking mud and dirt everywhere."}, {"id": "floor-plans-07", "subject": "Kids' bedroom flexibility", "lesson": "Please actually draw two or three possible layouts for each child's room, not just one. Where do the beds go if two kids share? What happens when they want a desk, or upgrade to a double or queen bed? In one of my rooms there's the bedroom door, a second door to the Jack-and-Jill bathroom, and a double-door closet. With all those doors and the windows, there's basically only ONE place to put the furniture. It's frustrating."}, {"id": "floor-plans-08", "subject": "Avoid Jack-and-Jill bathroom", "lesson": "Honestly, this is one of my biggest regrets. I hate our Jack-and-Jill bathroom—the one with a door from each child's bedroom. It sounds convenient, but kids make noise, parents make noise, and someone using the bathroom can wake a sleeping or sick child in the other room. I'd much rather the kids step into the hallway and use a shared hallway bathroom. The tiny bit of convenience isn't worth the lack of separation."}, {"id": "floor-plans-09", "subject": "Ensuite access", "lesson": "An ensuite for a bedroom is nice, but think about who will have to clean or fix it years from now. If it's in your child's bedroom, you're going through their room whenever you need to get to the bathroom. Not necessarily a deal-breaker; just picture that when they're teenagers."}, {"id": "floor-plans-10", "subject": "Larger walk-in shower", "lesson": "I love our walk-in shower and the sliding glass doors. If you can afford to make yours a little bigger or custom-sized, I would. It's so much nicer when two people can fit comfortably, or when you need to shower with/help a baby or young child. We also have a bit of water splash out at the bottom of the glass, so plan for that."}, {"id": "floor-plans-11", "subject": "Side-by-side laundry", "lesson": "Stackable washer/dryers suck, in my opinion. Side-by-side machines are much easier for kids to help with as they get older, and I like the accessibility. I'd choose side-by-side if you have the space rather than save a bit of floor area with a stack."}, {"id": "floor-plans-12", "subject": "Laundry near back door", "lesson": "My washer and dryer are behind the first door when I come in from the garage/back entrance, and I love that location. When the kids come in covered in dirt—or worse, there's vomit or another mess—I can deal with it immediately instead of carrying it through the house. I'd put a laundry sink there too so you can rinse gross stuff before tossing it straight into the washer."}, {"id": "floor-plans-13", "subject": "Storage everywhere", "lesson": "You will have SO much stuff, especially with kids: bikes, basketballs, gym equipment, clothes in different sizes, Halloween costumes, Christmas decorations, you name it. I can't overstate how useful extra storage is. Think about where all that stuff will actually live, not just how pretty the rooms look on the drawings."}, {"id": "floor-plans-14", "subject": "Accessible crawl space", "lesson": "I absolutely love having a crawl space that I can access from INSIDE my house. All our seasonal decorations and out-of-season clothes go down there, and I don't have to go outside to get them. Ask the architect whether you can make it larger or a bit more usable. I was told crawl spaces may be treated differently from living floor area, but don't assume they're automatically exempt—have the architect confirm the Vancouver rules."}, {"id": "floor-plans-15", "subject": "Attic storage", "lesson": "If you can get part of the attic safely prepared/finished for storage, I'd consider it. Even a modest usable area is great for the stuff you don't need every day. Obviously ask the builder about safe flooring, structure, insulation, ventilation and access rather than just putting things on the attic framing."}, {"id": "floor-plans-16", "subject": "Under-stair space", "lesson": "Don't let the space under the stairs go to waste. It might become storage or where the plumber puts mechanical equipment. One thing to think about in a three-level duplex: if that space is in the basement and you eventually have a tenant, will YOU be able to get to whatever is stored or installed there without going through their home?"}, {"id": "floor-plans-17", "subject": "Basement stair doors", "lesson": "If you're going to use the basement as part of your own home rather than a rental suite, I'd love doors at both the top and bottom of the stairs for noise and privacy. Ask the architect what is allowed and have any future door location planned properly. Don't assume you can simply add a door after occupancy without checking fire/egress and permit requirements."}, {"id": "floor-plans-18", "subject": "Windows and skylights", "lesson": "More windows and natural light are fantastic, and I really like skylights (I called them sunroofs when we talked). I thought the extra cost was worth it. There are limits on how much glazing you can have on certain exterior walls, though, so have your architect show you the options instead of assuming you can just add windows everywhere."}, {"id": "floor-plans-19", "subject": "Stone window sills", "lesson": "A big marble or granite window sill looks beautiful. Mine are quite deep, and I notice that the window area can feel colder or draftier because of the way the window is set back. Curtains help, but it's worth thinking about the window detail and insulation before choosing the look."}, {"id": "floor-plans-20", "subject": "Frosted ensuite door", "lesson": "I have a frosted-glass door for my ensuite and, surprisingly, I really like it. It lets a little extra light pass between the ensuite and the bedroom at night, and you can sort of tell when someone is in there. I wouldn't bother for the kids' bathroom, but it's a nice touch in the primary ensuite."}, {"id": "floor-plans-21", "subject": "Pocket doors", "lesson": "Pocket doors are annoying. Mine have settled/needed adjustment, and once the door slides into the wall, that whole wall cavity becomes pretty useless—you can't casually add outlets, screw in shelves or hang things there. They save swing space, sure, but think about what you lose in return."}, {"id": "floor-plans-22", "subject": "Mirrored sliding closet doors", "lesson": "I love the sliding mirrored doors on my main-floor entrance closet. They make the entry feel more open and give you a mirror without using another wall. This is one of those smaller design choices I'd happily do again."}]}, {"slug": "utilities-plumbing", "icon": "utilities", "name": "Utilities & Plumbing", "items": [{"id": "utilities-plumbing-01", "subject": "Electrical service for all dwellings", "lesson": "This is a BIG one for your duplex-plus-laneway project. Talk to the electrician and BC Hydro early, not after the house is built. I'd ask them to investigate something like 200 amps for each duplex and enough additional capacity for the laneway, subject to a proper load calculation and what BC Hydro will actually approve. I wish I'd been more aggressive about planning for future power needs."}, {"id": "utilities-plumbing-02", "subject": "Upgrade BC Hydro service early", "lesson": "If you're already doing major construction and BC Hydro is coming out, seriously consider doing the service upgrade/split then and there. Having to book them again later, potentially disrupt the whole block and redo work is a nightmare and can get really expensive. Do it while the site is open if the design calls for it."}, {"id": "utilities-plumbing-03", "subject": "Multiple-household electrical loads", "lesson": "Picture everybody using power at once: your dryer, your duplex neighbor's dryer, the laneway's dryer, induction cooktops, air fryers, heat pumps and maybe multiple EV chargers. That's why I keep bringing up the electrical service. Don't just look at what one household needs today—get the electrician to calculate the actual loads across the whole development."}, {"id": "utilities-plumbing-04", "subject": "Level 2 EV charging capacity", "lesson": "Even if you don't have an EV today, plan for Level 2 charging at the garage/parking spots for the duplexes and laneway. I wouldn't want to discover later that there isn't enough panel or service capacity. Ask about dedicated circuits, smart load management and the most practical cable route."}, {"id": "utilities-plumbing-05", "subject": "Fan-coil heating and cooling", "lesson": "In-floor heating is great, but honestly my fan-coil system that does both heating AND cooling is fantastic. Being able to cool the house is a huge benefit. If I were choosing again, I'd absolutely prioritize proper heating/cooling rather than assume radiant heat alone is enough."}, {"id": "utilities-plumbing-06", "subject": "Radiant bathroom floors", "lesson": "If you can get in-floor heating in the ensuites and full bathrooms, highly recommend it. Warm bathroom floors are amazing in winter. I wouldn't spend the same money putting it in a little powder room, though—that's much lower on my list."}, {"id": "utilities-plumbing-07", "subject": "Independent temperature zones", "lesson": "I'd really consider two or three temperature zones if you can afford it. Maybe you like the upstairs bedrooms cooler for sleeping but want the living room warmer in winter. And if you have a basement tenant or family staying downstairs, it's great if they can have a different temperature too. More equipment/control costs more, but the flexibility is fantastic."}, {"id": "utilities-plumbing-08", "subject": "ERV ventilation", "lesson": "I think an ERV is a must-have. I wasn't sure whether you could combine its functions with a fan coil, so ask the mechanical contractor to explain the setup. My point is: make sure the home has a proper fresh-air/ventilation strategy, not just heating and cooling."}, {"id": "utilities-plumbing-09", "subject": "Serviceable HVAC filters", "lesson": "Make sure you can actually get to the fan-coil or ERV filters to change them. Same general idea with an outdoor heat pump—leave proper service access. It sounds obvious until the equipment is boxed into a ridiculous corner and a simple filter change becomes a project."}, {"id": "utilities-plumbing-10", "subject": "Tankless hot water benefits", "lesson": "I have gas-fired hot water on demand, and for us it's been great. We're a family of five, plus tenants downstairs (sometimes a couple of people), and the kids fill bathtubs all the time. We've never run out of hot water. That is a HUGE plus compared with worrying about a storage tank running empty."}, {"id": "utilities-plumbing-11", "subject": "Tankless hot water trade-offs", "lesson": "The downside of my tankless setup is that hot water can take one or two minutes to reach the upstairs ensuite when the unit is down in the basement. The basement gets hot water sooner. I also feel the gas usage/cost is significant; the actual cost comparison depends on your system and rates. I'd still choose it for the endless hot water, but I'd ask about the piping layout and whether recirculation makes sense."}, {"id": "utilities-plumbing-12", "subject": "Mechanical room size", "lesson": "I really wish my mechanical/plumbing area were bigger and better laid out. Mine is basically a tight closet with a random plywood wall and a confusing mess of pipes, valves and equipment. There's barely any room to work, maintain things or add an upgrade. If you can give this space a little more room and make the layout logical, future you will thank you."}, {"id": "utilities-plumbing-13", "subject": "Main water shutoffs", "lesson": "Have the plumber show you EXACTLY where the main water shutoff is, which valves serve which parts of the house, and how to reach them quickly. In my house the plumbing is so cramped and confusing that I wish it had been planned much more cleanly. This matters when there's a leak and you need to act fast."}, {"id": "utilities-plumbing-14", "subject": "Gas meter access", "lesson": "Think about where the gas meter goes. FortisBC needs access to inspect or deal with it, especially during an emergency. How far into your property do you actually want someone to have to walk to reach it? I'd sort that out with the utility and architect at the planning stage."}, {"id": "utilities-plumbing-15", "subject": "Water meter access", "lesson": "I assume you'll have to deal with a water meter too. Make sure you know where it is and that it's easy to reach for readings, inspections and maintenance. This is the kind of little thing nobody thinks about until somebody needs access."}, {"id": "utilities-plumbing-16", "subject": "Fridge water connection", "lesson": "If you're putting a water line to the fridge, please make the connection AND shutoff easy to get at. Those lines can leak, and you don't want to pull apart half the kitchen to fix one. Under the sink or behind the fridge could both work—your call, depending on which is actually accessible."}, {"id": "utilities-plumbing-17", "subject": "Shower plumbing on exterior walls", "lesson": "When you're deciding where the tub/shower goes, think about where the actual pipes sit behind the wall. I'd avoid putting vulnerable water lines on an unprotected exterior wall because of freezing concerns. I remember this affecting how bathrooms could be laid out; ask the plumber/architect what the proper wall assembly allows."}, {"id": "utilities-plumbing-18", "subject": "Shower/tub service access", "lesson": "If there's a bathtub faucet, shower valve or other plumbing behind a wall, think about how you're going to get to it when something leaks. I would much rather have a discreet access panel on the other side than be forced to cut a hole in finished drywall. Plumbing leaks do happen."}, {"id": "utilities-plumbing-19", "subject": "Dryer vent routing", "lesson": "My dryer is right by the back entrance and its exhaust duct goes almost straight outside. I LOVE that I can get to the vent and clean the lint out without a giant ordeal. When you're placing the laundry room, think about where that dryer duct has to travel, not just where the machines look good."}, {"id": "utilities-plumbing-20", "subject": "Tenant vs owner utility access", "lesson": "This is especially important if you're building a basement suite. Is the electrical panel, main shutoff or under-stair mechanical equipment in the tenant's space? If something breaks, do you have reasonable access, or do you have to arrange to enter their home? I would plan this before the rooms are drawn, while respecting tenant access rules."}]}, {"slug": "electrical-tech", "icon": "electrical", "name": "Electrical & Tech", "items": [{"id": "electrical-tech-01", "subject": "Cat6 throughout", "lesson": "Run Cat6 EVERYWHERE you might reasonably want wired internet: bedrooms, living rooms, offices, TV walls, even spots you might rearrange later. It's so cheap to pull while the walls are open. Once drywall is up, running another cable becomes a pain and sometimes means opening walls. I'd rather have a few unused Ethernet jacks than wish I'd installed them."}, {"id": "electrical-tech-02", "subject": "Why Cat6", "lesson": "Here's WHY I keep pushing Cat6: Telus already sells internet plans faster than 1 gig, and those speeds are only going to improve. I don't want to pay for 3-gig internet and discover my in-wall wiring is the bottleneck. Cat6 gives better headroom for multigig and can support 10 Gb over suitable run lengths. Cat5e can also handle some multigig speeds under the right conditions, so it's not strictly 'stuck at 1 gig'—but if you're building new, I still wouldn't cheap out on the cable."}, {"id": "electrical-tech-03", "subject": "Fiber pathway", "lesson": "I'd consider running fiber, or at least a proper conduit, from the incoming Telus/service location to the media panel and maybe from the media panel to the living room or another central spot. That way, if you ever want the modem/router somewhere else or internet speeds keep increasing, you're not trying to fish new cable through finished walls."}, {"id": "electrical-tech-04", "subject": "Skip unnecessary coax", "lesson": "I had coax run around the home and, for my setup, it's basically useless. I'd spend that money on Cat6 instead. Obviously, if you actually need coax for a specific service, that's different—but I wouldn't automatically put it in every room just because that's what people used to do."}, {"id": "electrical-tech-05", "subject": "Oversized media panel", "lesson": "Seriously, make the media panel BIG. I'd aim for something around double the size of the small ones I've seen. By the time you add the router, network switch for all those Cat6 outlets, PoE gear, security camera recorder/hard drive, alarm stuff and power supplies, it fills up quickly. And leave ventilation and access around the equipment too."}, {"id": "electrical-tech-06", "subject": "Accessible media panel location", "lesson": "One of my pet peeves: my media panel is inside my child's BEDROOM CLOSET on the second floor. Why? I assume it was convenient to drop wires from the attic, but now Telus or anyone troubleshooting the internet has to go through a kid's room. I'd put it in a properly planned main-floor closet or pantry instead, so a technician can come in, do the work and leave without walking upstairs."}, {"id": "electrical-tech-07", "subject": "Hinged media panel door", "lesson": "Don't get a media panel cover that you need a screwdriver to remove every time. Pay the extra money (I was thinking maybe $50 or so) for a proper hinged door with a latch, like the access panels we see at work. You'll be opening it more than you think."}, {"id": "electrical-tech-08", "subject": "Ceiling Wi-Fi access points", "lesson": "I actually had Cat6 run to ceiling-mounted Wi-Fi access point locations in the living room. It sounded like good future-proofing, but professional units can be expensive, use PoE and sometimes have their own controller/software setup (like Meraki). I ended up using Google Wi-Fi and don't use those ceiling points. Nice to have, definitely not a must-have for me."}, {"id": "electrical-tech-09", "subject": "Outdoor PoE cameras", "lesson": "For security cameras, run Cat6 straight from the media panel to the outside spots where you want cameras. A compatible PoE camera can get power AND network over that one cable. Much cleaner than trying to figure out separate power afterward. Think through the actual camera angles before the exterior is finished."}, {"id": "electrical-tech-10", "subject": "Camera cable pull strings", "lesson": "For each outdoor camera location, I'd run the Cat6 and also provide a usable pull string in conduit if possible. That way if you ever need a second cable or have to replace the first, you're not ripping open the exterior. A pull string doesn't help if the cable is stapled behind finished walls, so make sure there's a real pathway."}, {"id": "electrical-tech-11", "subject": "Smart doorbell wiring", "lesson": "Run wiring to the front doorbell location and consider Cat6 while the wall is open. I like the idea of being able to install a Nest or another smart video doorbell later without starting from scratch. Just check the actual doorbell model—some use conventional low-voltage power rather than PoE."}, {"id": "electrical-tech-12", "subject": "Smart thermostat compatibility", "lesson": "This one really annoys me. I built a brand-new house and somehow didn't get the right wires for the smart thermostats I wanted. Such a simple thing to get right before drywall! Tell the HVAC/electrical people what thermostat you might want (Nest, etc.) and make sure the right power and control conductors are there."}, {"id": "electrical-tech-13", "subject": "Spare thermostat cables", "lesson": "I'd even consider an extra cable or spare conductors to each thermostat, and Cat6 or conduit if the system design makes sense. I originally thought 'just run two Cat6 cables'—but smart thermostats don't all use Ethernet/PoE, so have the HVAC installer specify the correct wiring. The key is to leave yourself options, because the existing cables may be stapled to studs and impossible to pull out later."}, {"id": "electrical-tech-14", "subject": "TV outlets at mounting height", "lesson": "If you might wall-mount a TV in the living room OR bedroom, put power and Cat6 right behind the TV at the correct height. But don't forget power and Ethernet LOWER DOWN too, where the PlayStation, Switch, Blu-ray player or other devices actually sit. I love having the option to mount a TV without visible cords."}, {"id": "electrical-tech-15", "subject": "TV-to-console conduit", "lesson": "This is such an easy win during construction: put a nice big low-voltage conduit/PVC pathway from behind the wall-mounted TV down to where the consoles and media gear will live. Then you can change HDMI or other cables later without opening the wall. It should have accessible ends, appropriate separation from mains wiring and enough space for the cable connectors."}, {"id": "electrical-tech-16", "subject": "Entertainment device outlets", "lesson": "Remember that the TV isn't the only thing that needs power. The PlayStation, Nintendo Switch, modem/router, streaming box and Blu-ray player might all be on a shelf to the side or below. Put enough outlets and Ethernet there as well as behind the screen. Otherwise you're stuck with ugly extension cords."}, {"id": "electrical-tech-17", "subject": "Island outlets", "lesson": "Outlets on the kitchen island are fantastic. We use them all the time. I'd definitely plan convenient power around a big island, with the electrician figuring out the permitted locations and how to keep them looking clean."}, {"id": "electrical-tech-18", "subject": "Kitchen appliance circuits", "lesson": "Think about how many appliances you might use at once: microwave, convection oven, air fryer, coffee maker, induction cooking, etc. I don't want one appliance tripping the circuit because someone starts another one. Tell the electrician the actual appliances and where they'll go, so the circuits are laid out properly."}, {"id": "electrical-tech-19", "subject": "Kitchen GFCI protection", "lesson": "I'd ask for plenty of conveniently located, properly protected kitchen receptacles—what I called 'two or three different GFCIs' when we were talking. More importantly, have the electrician provide enough separate circuits for the loads; just adding GFCI outlets doesn't increase capacity. The kitchen is where all the high-draw gadgets pile up."}, {"id": "electrical-tech-20", "subject": "USB charging outlets", "lesson": "USB-C and USB-A outlets in the kitchen and living room are genuinely handy. We charge so many little devices these days that having charging built into a normal wall receptacle makes sense. I'd put them where people actually sit and where devices end up on the counter."}, {"id": "electrical-tech-21", "subject": "Bidet outlet", "lesson": "Put an electrical outlet near the toilet if there's any chance you want an electric bidet later. This is such a small thing during rough-in and a pain afterward. Have the electrician position and protect it properly for a bathroom."}, {"id": "electrical-tech-22", "subject": "Vanity outlets", "lesson": "I really like the idea of outlets INSIDE or underneath the bathroom vanity so hair dryers and other grooming tools can be stored neatly instead of leaving cords dangling all over the counter. Also keep a convenient wall outlet where needed. Have the electrician check the safe/code-compliant locations—bathrooms are obviously wet areas."}, {"id": "electrical-tech-23", "subject": "Hallway outlets", "lesson": "Don't underestimate hallway outlets. They're useful for vacuuming, charging things and nightlights, and they're easy to forget because the hallway looks like 'just a hallway' on the floor plan. I would rather have one and not use it than need one later."}, {"id": "electrical-tech-24", "subject": "Switched hallway nightlights", "lesson": "With kids, hallway nightlights are super helpful when they get up in the middle of the night. I'd plan the outlets/lighting where they actually need to see. For dedicated lights, I prefer a switch so you can turn them off when you don't need them."}, {"id": "electrical-tech-25", "subject": "Vacuum charging points", "lesson": "Think NOW about where you're going to hang a cordless Dyson or Shark vacuum and put an outlet there. Maybe that's in the pantry, laundry room or an upstairs closet. Honestly, with messy kids you may even want a second vacuum upstairs. Having a charging spot ready is so much nicer than a cable hanging across the wall."}, {"id": "electrical-tech-26", "subject": "Bedroom lighting groups", "lesson": "In my bedroom I have four lights arranged around the room and one center light, on separate switches. I really like being able to turn on just the center or just the outer lights. It's a small layout detail, but it makes the room much more flexible."}, {"id": "electrical-tech-27", "subject": "Three-way light switches", "lesson": "Three-way switches are really useful. If you can control a light from both ends of a hallway or stairway—or other sensible locations—do it. It's one of those little conveniences you appreciate every day."}, {"id": "electrical-tech-28", "subject": "Closet lighting", "lesson": "Lights inside closets: DEFINITELY do it. It's not that expensive when the walls are open and the electrician is already running cables. Digging around in a dark closet later is annoying, and adding lighting after the fact is much more trouble."}, {"id": "electrical-tech-29", "subject": "Bathroom pot lights", "lesson": "I much prefer recessed pot lights in bathrooms. Some of those pretty decorative light bowls collect dust and grime and are an absolute nightmare to take apart and clean. Pot lights are simpler and avoid that whole problem for me."}, {"id": "electrical-tech-30", "subject": "Exterior pot/motion lights", "lesson": "I like exterior pot lights and motion-triggered lights around the house. They're practical for arriving home, going outside after dark and security. I'd make sure the fixtures are appropriate for outdoor weather rather than just picking whatever looks nice."}, {"id": "electrical-tech-31", "subject": "Front gate light switch", "lesson": "I have a light way out at the front gate by the sidewalk, and I LOVE that I can turn it on from inside. What I don't love is that the switch is randomly on a living-room wall. It should be right beside the front entry with the other switches. Walk through the house on paper and think about where your hand will reach."}, {"id": "electrical-tech-32", "subject": "Backyard evening lighting", "lesson": "Imagine having friends over in the backyard on a summer evening—or going out there when it gets dark early in fall and winter. Is there enough light to actually use the space? Don't only plan a single security light. Think about lighting the places where people will sit and where the kids play."}, {"id": "electrical-tech-33", "subject": "Switch placement walkthrough", "lesson": "This is one of those things that's easy to miss on a drawing. Pretend you're walking in the front door, coming through the garage, going upstairs and heading to bed. Where do you instinctively reach for the switch? My gate-light switch ended up somewhere silly, and I'd fix that if I built again."}, {"id": "electrical-tech-34", "subject": "Label electrical panel", "lesson": "Make the electrician label the electrical panel PROPERLY. I want to know exactly which breaker controls the exterior lights, the kitchen outlets, the bedrooms and so on. You don't want to stand there flipping random breakers when you're trying to repair something."}, {"id": "electrical-tech-35", "subject": "Alarm system and battery", "lesson": "If you're putting in an alarm, make sure the control panel and backup battery are easy to reach when they need servicing. I'd keep the equipment near the media/network panel if possible, ideally in that accessible main-floor closet instead of somewhere buried in a bedroom."}, {"id": "electrical-tech-36", "subject": "Camera viewing system", "lesson": "Personally, I don't see the point of having a dedicated screen on the wall showing all the security cameras live all day. I just check them on my phone. Decide what security setup you actually want before someone sells you a giant monitor and equipment you won't use."}, {"id": "electrical-tech-37", "subject": "Install Level 2 charger now", "lesson": "I wouldn't just leave a rough-in for a Level 2 EV charger if you're already sure you'll want one. Consider having the electrician install and commission the actual charger during construction. Everything is open, the electrician is there anyway, and the finished installation looks so much cleaner than a bunch of exposed conduit added later. Obviously confirm the load design and whether the charger is worth buying now."}, {"id": "electrical-tech-38", "subject": "Automated blind power", "lesson": "One more little future-proofing idea: think about electrical power or low-voltage wiring near your windows in case you ever want automated blinds. Even if you don't buy them right away, getting the power location sorted before drywall is much easier. Ask the blind supplier/electrician where it needs to come out so you don't end up with an ugly visible cord."}]}, {"slug": "before-drywall", "icon": "drywall", "name": "Before Drywall", "items": [{"id": "before-drywall-01", "subject": "Visit construction safely", "lesson": "Please go onto the construction site regularly (arrange it with the builder and follow their safety rules). It's your property and you're paying for it—don't be shy about wanting to understand what's going on. You catch so many little things just by seeing the work before it gets covered up."}, {"id": "before-drywall-02", "subject": "Photograph every open wall", "lesson": "Take SO MANY pictures and videos when the studs are exposed. Seriously, every wall, ceiling, corner, electrical run, water pipe and drain. Five or ten years later, when you want to hang something or find a problem, you'll be so happy you can see exactly what's behind the drywall."}, {"id": "before-drywall-03", "subject": "Curtain rod backing", "lesson": "This one is painfully personal: my curtain rods have pulled anchors right out of the drywall, and now I've got a bunch of damaged holes above the windows. I don't know exactly where there's solid backing, so even a simple curtain rod has become a headache. Photograph above EVERY window and ask about adding blocking where rods/blinds might mount."}, {"id": "before-drywall-04", "subject": "TV and shelf mounting", "lesson": "While you can see the studs, take photos and measurements so you know where to mount a TV, floating shelf, mirror or anything heavy later. It's so much easier than guessing and putting holes in finished drywall. Also ask for backing wherever you already know something heavy will go."}, {"id": "before-drywall-05", "subject": "Ceiling framing", "lesson": "Don't just photograph the walls—photograph the CEILINGS too. You never know when you'll want to mount a projector, hanging light or something else overhead. Knowing where the joists and proper supports are makes planning much easier (and any heavy load still needs the right engineered support)."}, {"id": "before-drywall-06", "subject": "Kids' climbing/rope anchors", "lesson": "If you think you might want a kids' indoor climbing wall, hanging rope or swing, think about it during framing. Seeing the studs and joists helps you plan, but don't just screw a swing into any random stud—get proper structural support designed for the load. This is much easier before the walls close."}, {"id": "before-drywall-07", "subject": "Drain and sewer routes", "lesson": "Take photos of where the drain stacks and sewer lines run from upstairs down toward the basement/crawl space. Imagine drilling to hang a picture and accidentally hitting a sewage pipe—that's exactly the kind of nightmare I want to avoid. Mark the locations while everything is visible."}, {"id": "before-drywall-08", "subject": "Electrical cable routes", "lesson": "Same thing for the electrical cables: photograph their exact routes before drywall. When you later want to install a curtain rod, TV mount, cabinet or picture, you'll know where NOT to drill. Take photos from far enough back that you can identify the wall later."}, {"id": "before-drywall-09", "subject": "Conduit for future changes", "lesson": "I learned that in a wood-frame home the cables are often stapled to the studs. You can't assume you can pull an existing cable and magically fish a new one through. If you think you might need to replace or add cables later, have proper conduit with accessible ends installed now. PVC conduit is cheap when the walls are bare."}, {"id": "before-drywall-10", "subject": "Service panel access", "lesson": "Before drywall goes up, ask the plumber to point out every valve, shower/tub connection and piece of equipment that may need maintenance. Where will you reach it after the walls are finished? I would much rather plan a neat access panel now than cut open drywall when a leak happens."}, {"id": "before-drywall-11", "subject": "Outlet/ethernet walkthrough", "lesson": "Walk through each room with the actual furniture layout in mind. Could the TV go on either wall? Where does the bed go? Where will a vacuum charge? Are there outlets near windows for motorized blinds, beside toilets for bidets and where the devices sit below the TV? Adding one more outlet/Cat6 run now is usually much cheaper."}, {"id": "before-drywall-12", "subject": "Lighting position walkthrough", "lesson": "Check the pot lights, bedroom light groups, dining chandelier and kitchen pendants against where the furniture and island will ACTUALLY go. A fancy dropped ceiling or chandelier can accidentally force a particular furniture layout. Fixing those positions while everything is open is much easier."}]}, {"slug": "finishes-fixtures", "icon": "finishes", "name": "Finishes & Fixtures", "items": [{"id": "finishes-fixtures-01", "subject": "Avoid vessel sinks", "lesson": "Those fancy raised glass bowl sinks with tall faucets? They SUCK to clean. We had the look, but wiping around the bowl, underneath it and around the faucet is such a pain. I wouldn't do it again, especially not in a bathroom people use every day."}, {"id": "finishes-fixtures-02", "subject": "Undermount/flush sinks", "lesson": "I'd take a simple, nice undermount sink any day. Think carefully about the reveal/edge where the sink meets the countertop: little ledges can trap water, grime and eventually gross-looking caulking. I want a clean, easy-to-wipe transition instead of a fancy detail that's a maintenance headache."}, {"id": "finishes-fixtures-03", "subject": "Shower glass splash control", "lesson": "I really like my walk-in shower and sliding glass doors, but water STILL splashes out at the bottom. It's not a flood, but it's enough that you'll notice it on the bathroom floor. Make sure the threshold, glass seals, drainage and floor outside the shower are planned properly, and expect to use a bath mat."}, {"id": "finishes-fixtures-04", "subject": "Shower waterproofing", "lesson": "Do not let anyone treat caulking as the thing keeping water out of your walls or floor. With a glass walk-in shower, water can get out at the bottom and a bad waterproofing job can leak into what's underneath. I'd be very particular about the actual waterproofing system, slopes and testing before tiling."}, {"id": "finishes-fixtures-05", "subject": "Spa shower fittings", "lesson": "I love the spa setup in my shower: body sprays that shoot horizontally, a rainfall/waterfall-style showerhead and a handheld wand. It's a ton of water and feels like having a little private spa at home. If you like baths/showers and can afford the plumbing and water demand, it's a fun upgrade."}, {"id": "finishes-fixtures-06", "subject": "Large-format shower tile", "lesson": "I'd use bigger tiles rather than tiny mosaics in the shower. My bathroom tiles are roughly 1 ft by 2 ft, so I have fewer grout lines to deal with. That makes cleaning and future maintenance much more manageable."}, {"id": "finishes-fixtures-07", "subject": "Grout maintenance", "lesson": "The more grout lines you have, the more grout there is to crack, stain or repair. My neighbor used little mosaic tiles with a TON of grout lines and has ended up redoing grout in the shower every few years—roughly five years, from what they've told me. I've had to repair some grout too, even with my larger tiles. Something to think about before picking a beautiful but high-maintenance pattern."}, {"id": "finishes-fixtures-08", "subject": "Tile bathroom walls to ceiling", "lesson": "If the budget allows, I'd tile the bathroom walls all the way to the ceiling, especially around the tub/shower. Kids spray water everywhere, including areas you'd never expect. Exposed drywall around wet areas is just another thing to worry about. They'll probably still manage to splash the ceiling, but at least the walls are protected."}, {"id": "finishes-fixtures-09", "subject": "Toilet service clearance", "lesson": "Tiny detail, but look at how the toilet sits against the wall and nearby cabinetry. Can you actually get your hand behind it to CLEAN? Can you reach the bolts to replace the toilet seat/lid later? It's easy to install something that looks nice but is a pain every time you need to maintain it."}, {"id": "finishes-fixtures-10", "subject": "Avoid upward-facing light bowls", "lesson": "Don't buy those pretty bathroom lights shaped like cups, bowls or flowers that face UP. They collect dust and grime, and sometimes you need a special tool or have to dismantle the fixture just to clean it. Forward-facing ones aren't necessarily much better. For me, pot lights are the answer."}, {"id": "finishes-fixtures-11", "subject": "Main-floor marble/tile", "lesson": "I love the marble/tile flooring on my main floor. With kids spilling water and everyone coming in from outside, I can just mop it up without worrying about water sitting on wood. Obviously stone/tile has its own sealing and slip considerations, but for my family it's been fantastic."}, {"id": "finishes-fixtures-12", "subject": "Wood stairs", "lesson": "I have wooden stairs and honestly they've been fantastic. No real issues at all. I'd happily do wooden stairs again."}, {"id": "finishes-fixtures-13", "subject": "Bedroom carpet vs wood", "lesson": "Upstairs is hardwood because that's what we chose, but I sometimes wish we'd put carpet in the bedrooms. Carpet just feels cozier underfoot, especially for kids. On the other hand, I can always throw a nice rug over the hardwood, so this one is totally personal preference."}, {"id": "finishes-fixtures-14", "subject": "Soft-close cabinetry", "lesson": "Soft-close drawers and cupboard/closet doors are worth considering everywhere, especially with children slamming things. It's a small everyday convenience and keeps the noise down. I'd put it in wherever practical."}, {"id": "finishes-fixtures-15", "subject": "Modular closet shelves", "lesson": "Get proper shelving and hanging rods in every closet, and make the shelves adjustable. Kids grow, clothes change, and what you store in a closet today won't be what you store there in five years. Being able to move a shelf up or down is so helpful."}, {"id": "finishes-fixtures-16", "subject": "Customized pantry shelves", "lesson": "Definitely get shelving in the pantry, ideally customized to the actual dimensions. I don't want random dead space because standard shelves didn't fit. A well-organized pantry makes everyday life so much easier."}, {"id": "finishes-fixtures-17", "subject": "Quiet roller door catches", "lesson": "The metal ball-bearing-style door catches can get tight and make a nasty scratchy noise as they dry out or wear. Kids also find them harder to open. I prefer the plastic/nylon roller-style catches like the ones we have at work; they're quieter and easier to adjust. Small detail, but I notice it."}, {"id": "finishes-fixtures-18", "subject": "Wall-mounted doorstops", "lesson": "Don't get fancy with doorstops installed in the FLOOR. I think that's a terrible idea. The basic ones on the wall are cheap, easy and do the job without putting a metal obstacle in the flooring. I'd choose wall-mounted ones again."}, {"id": "finishes-fixtures-19", "subject": "Kitchen storage", "lesson": "Lots and lots of storage in the kitchen. Between appliances, food, kids' stuff and all the random things that accumulate, you'll use it. I'd rather design useful drawers, cabinets and pantry shelves than realize afterward there's nowhere to put anything."}, {"id": "finishes-fixtures-20", "subject": "Range hood performance", "lesson": "Make sure the hood fan is actually strong enough for how you cook, not just pretty. Also think about how easy it is to clean the filters and get at the ducting. A powerful fan that's a nightmare to maintain isn't much fun."}, {"id": "finishes-fixtures-21", "subject": "Appliance brand reliability", "lesson": "My personal experience: Samsung appliances suck. I wouldn't buy them again. That's just based on what I've dealt with, not a scientific comparison—I'd spend time looking at reliability, repair options and parts availability before choosing appliances."}]}, {"slug": "exterior-yard", "icon": "exterior", "name": "Exterior & Yard", "items": [{"id": "exterior-yard-01", "subject": "Wood fence maintenance", "lesson": "Wooden fences are beautiful, but they need maintenance and staining/painting every few years—I'd plan on checking them around every three years. I had to replace mine after about TEN years because I couldn't access the other side to paint/protect it. If you can't maintain both faces, the fence can deteriorate even when your side looks okay."}, {"id": "exterior-yard-02", "subject": "Metal fence trade-off", "lesson": "I switched to a metal fence because I can basically power-wash it and it's easier for me to maintain long-term. But there's a trade-off: kids kicking soccer balls or basketballs into it can DENT the panels. So if your kids are going to use the fence as a goal, think carefully. Wood looks nicer to some people; metal is lower maintenance for me."}, {"id": "exterior-yard-03", "subject": "Fence/property line", "lesson": "My entire fence was on MY property, so the neighbor didn't have to contribute a cent when I replaced it. That also made the replacement decision mine. Before building, confirm exactly where the fence and property line are, and don't assume the neighbor is splitting the bill."}, {"id": "exterior-yard-04", "subject": "Avoid loose rock landscaping", "lesson": "I would NOT do lots of decorative rocks in the backyard again. Under the rocks is dirt, then more random rocks, and trying to dig it all out later is a huge pain. It sounds easy to change a yard later, but the amount of labor is ridiculous. I'd rather start with a practical plan."}, {"id": "exterior-yard-05", "subject": "Practical paved areas", "lesson": "Personally I'd use as much useful concrete/paving as the approved landscaping and drainage rules allow, with greenery where it makes sense. A solid, easy-to-clean surface is so much more useful for outdoor furniture, kids' activities or a future shed than a big patch of decorative rocks. I'm not saying pave literally everything—ask the architect what's permitted."}, {"id": "exterior-yard-06", "subject": "Confirm paving limits", "lesson": "The City of Vancouver has limits and requirements around hard surfaces, landscaping, drainage and green/permeable areas. So when I say 'more concrete,' I mean within whatever your approved site plan allows. Get the architect to work out the actual maximum before you decide how to use the backyard."}, {"id": "exterior-yard-07", "subject": "Future shed foundation", "lesson": "I'm convinced you'll eventually want a shed. Once you have kids, you need somewhere for bikes, balls, sports stuff, garden tools and all the random gear. I'd have a proper pad/foundation planned during construction rather than discover later that I need to excavate the backyard to put one in."}, {"id": "exterior-yard-08", "subject": "Multi-use shed pad", "lesson": "Even if you decide not to put a shed there, a nice concrete pad is still useful. Put an outdoor table on it, let the kids play with water there, whatever. To me it's not wasted space; it's flexible outdoor space."}, {"id": "exterior-yard-09", "subject": "Durable deck finishes", "lesson": "Front and back decks are great. Just choose materials that will actually last in Vancouver weather and think about how you'll maintain them. I don't want to be repainting or replacing things constantly because we chose something that looked nice for six months."}, {"id": "exterior-yard-10", "subject": "Repeatable deck stain", "lesson": "If you stain/paint your wood deck or steps, choose a color you can easily buy again in the future. It's annoying when you need to touch up a step or replace one board and can't match the original finish. I would absolutely plan for future touch-ups."}, {"id": "exterior-yard-11", "subject": "Outdoor lighting", "lesson": "Think about using the backyard after dark, not just how it looks in daylight. Will you have enough light for friends to sit outside in summer, or to go out there in fall/winter when it gets dark early? I'd plan useful patio/backyard lighting from the start."}, {"id": "exterior-yard-12", "subject": "Outdoor outlets", "lesson": "While you're already wiring the exterior, think about where weather-rated outlets would be handy for decorations, outdoor tools or future equipment. This wasn't one of my big regrets, just a practical thing I'd review on the electrical plan rather than having to add it later."}, {"id": "exterior-yard-13", "subject": "Motion-activated security lights", "lesson": "I like motion-triggered exterior lights and pot lights around the house. They're convenient when you arrive home and useful for security. Plan the locations and switch/control logic, especially at the front gate and back entrance."}]}, {"slug": "handover-safety", "icon": "handover", "name": "Handover & Safety", "items": [{"id": "handover-safety-01", "subject": "Linked smoke/CO alarms", "lesson": "I think the smoke and carbon monoxide alarms in my house are linked, so when one goes off the others sound too. I really like that feature and would recommend asking for properly interconnected alarms throughout the required areas. Have the installer demonstrate that they actually work together."}, {"id": "handover-safety-02", "subject": "Fire sprinkler layout", "lesson": "If the design includes fire sprinklers, look carefully at where the heads end up—especially around kids' rooms and closets—and ask the designer about any appropriate approved guards or protection. Don't just move or cover sprinkler heads yourself; have the fire-protection contractor follow the approved design."}, {"id": "handover-safety-03", "subject": "Breaker panel orientation", "lesson": "Before the electrician disappears, make them walk you through the electrical panel. Which breaker controls the outdoor lights? Which one is the kitchen? I want everything clearly labelled so I'm not guessing when something needs to be shut off or repaired."}, {"id": "handover-safety-04", "subject": "Plumbing orientation", "lesson": "Get the plumber to physically show you the main shutoff, individual valves, water meter, fridge water shutoff, tankless heater and anything else you might need to touch. My mechanical closet is so cramped and confusing that I wish I'd had a much clearer explanation and layout from day one."}, {"id": "handover-safety-05", "subject": "Heating/ERV orientation", "lesson": "Have the mechanical contractor show you how to change filters, use the different temperature zones and service the ERV/fan coil/heat pump. I don't want to pay someone to explain a simple filter change years later, and I definitely want to know how the ventilation is supposed to work."}, {"id": "handover-safety-06", "subject": "Network/security orientation", "lesson": "Make sure you know where the router, switches, PoE devices, camera recorder/hard drive, alarm panel and backup battery all live. I use my phone to check the cameras, not a dedicated monitor. A big, accessible media panel makes troubleshooting so much less annoying."}, {"id": "handover-safety-07", "subject": "Organize construction photos", "lesson": "Keep all those construction photos and videos somewhere you can actually find them later—ideally by floor and room. Knowing that you took a photo of the studs is useless if it's buried among 5,000 other photos. Those pictures are gold when you're hanging curtains, mounting a TV or trying to avoid a drain pipe."}, {"id": "handover-safety-08", "subject": "Tenant-access planning", "lesson": "Before handover, think about the basement tenant situation again. If you need to get to the electrical panel, main water shutoff, mechanical equipment or under-stair storage, can you do it without unnecessarily entering a tenant's private space? I would much rather solve the access problem on the plans than fight it later."}, {"id": "handover-safety-09", "subject": "Keep as-built records", "lesson": "I'd keep the approved drawings, any as-built updates, permits, equipment manuals, warranties, paint/stain colors and contractor contacts together. This is the stuff you never think you'll need—until a pipe leaks, you want to match the deck stain or you need to find out what's behind a wall."}]}]</script>
 <script>
 (function(){
-  "use strict";
   var CATS = JSON.parse(document.getElementById('data').textContent);
   var KEY = 'duplex-checklist-v1';
-  var TOTAL = CATS.reduce(function(s,c){ return s + c.items.length; }, 0);
-  var done = new Set();
-  try { (JSON.parse(localStorage.getItem(KEY) || '[]')).forEach(function(id){ done.add(id); }); } catch(e) {}
-  var current = -1, filter = 'all';
-
+  var ICONS = {
+"plans": "<svg class=\"ico\" viewBox=\"0 0 200 200\" aria-hidden=\"true\"><use href=\"#pf\"/><polygon class=\"l\" points=\"27.3,128 100,170 100,165 27.3,123\"/><polygon class=\"r\" points=\"172.7,128 100,170 100,165 172.7,123\"/><polygon class=\"f\" points=\"100,81 172.7,123 100,165 27.3,123\"/><polygon class=\"l\" points=\"97.4,82.5 170.1,124.5 170.1,102.5 97.4,60.5\"/><polygon class=\"r\" points=\"172.7,123 170.1,124.5 170.1,102.5 172.7,101\"/><polygon class=\"w\" points=\"100,59 172.7,101 170.1,102.5 97.4,60.5\"/><polygon class=\"l\" points=\"27.3,123 29.9,124.5 29.9,102.5 27.3,101\"/><polygon class=\"r\" points=\"100,84 29.9,124.5 29.9,102.5 100,62\"/><polygon class=\"w\" points=\"97.4,60.5 100,62 29.9,102.5 27.3,101\"/><polygon class=\"l\" points=\"91.3,130 93.9,131.5 93.9,109.5 91.3,108\"/><polygon class=\"r\" points=\"138.1,106 93.9,131.5 93.9,109.5 138.1,84\"/><polygon class=\"w\" points=\"135.5,82.5 138.1,84 93.9,109.5 91.3,108\"/><polygon class=\"l\" points=\"103.5,126 113,131.5 113,109.5 103.5,104\"/><polygon class=\"r\" points=\"115.6,130 113,131.5 113,109.5 115.6,108\"/><polygon class=\"w\" points=\"106.1,102.5 115.6,108 113,109.5 103.5,104\"/><polygon class=\"l\" points=\"123.4,137.5 132.9,143 132.9,121 123.4,115.5\"/><polygon class=\"r\" points=\"135.5,141.5 132.9,143 132.9,121 135.5,119.5\"/><polygon class=\"w\" points=\"126,114 135.5,119.5 132.9,121 123.4,115.5\"/><polygon class=\"l\" points=\"65.4,145 68,146.5 68,124.5 65.4,123\"/><polygon class=\"r\" points=\"83.5,137.5 68,146.5 68,124.5 83.5,115.5\"/><polygon class=\"w\" points=\"80.9,114 83.5,115.5 68,124.5 65.4,123\"/><polygon class=\"l\" points=\"29.9,124.5 97.4,163.5 97.4,153.5 29.9,114.5\"/><polygon class=\"r\" points=\"100,162 97.4,163.5 97.4,153.5 100,152\"/><polygon class=\"w\" points=\"32.5,113 100,152 97.4,153.5 29.9,114.5\"/><polygon class=\"l\" points=\"97.4,163.5 100,165 100,155 97.4,153.5\"/><polygon class=\"r\" points=\"170.1,124.5 100,165 100,155 170.1,114.5\"/><polygon class=\"w\" points=\"167.5,113 170.1,114.5 100,155 97.4,153.5\"/></svg>",
+"utilities": "<svg class=\"ico\" viewBox=\"0 0 200 200\" aria-hidden=\"true\"><use href=\"#pf\"/><path class=\"te\" style=\"stroke-width:19.6\" d=\"M55,98 L93.1,120 L96.7,121.5 L100,121.9 L102.9,121 L105.1,118.9 L106.5,115.9 L106.9,112 L106.9,94\"/><path class=\"tb\" style=\"stroke-width:18\" d=\"M55,98 L93.1,120 L96.7,121.5 L100,121.9 L102.9,121 L105.1,118.9 L106.5,115.9 L106.9,112 L106.9,94\"/><path class=\"th\" transform=\"translate(-2.5,-2)\" d=\"M55,98 L93.1,120 L96.7,121.5 L100,121.9 L102.9,121 L105.1,118.9 L106.5,115.9 L106.9,112 L106.9,94\"/><path class=\"o\" d=\"M115.2,98.8 L113.6,99.5 L111.8,100.1 L109.9,100.5 L107.9,100.7 L105.9,100.7 L103.9,100.5 L102,100.1 L100.3,99.5 L98.7,98.8 L97.4,97.9 L96.4,96.8 L95.7,95.7 L95.3,94.6 L95.3,93.4 L95.7,92.3 L96.4,91.2 L97.4,90.1 L98.7,89.2 L100.3,88.5 L102,87.9 L103.9,87.5 L105.9,87.3 L107.9,87.3 L109.9,87.5 L111.8,87.9 L113.6,88.5 L115.2,89.2 L116.5,90.1 L117.5,91.2 L118.2,92.3 L118.5,93.4 L118.5,94.6 L118.2,95.7 L117.5,96.8 L116.5,97.9Z\"/><path class=\"d\" d=\"M106.9,38 C112.9,52 123.9,62 123.9,74 A17,17 0 0 1 89.9,74 C89.9,62 100.9,52 106.9,38Z\"/><ellipse class=\"hl\" cx=\"99.9\" cy=\"70\" rx=\"3.5\" ry=\"7\" transform=\"rotate(20 99.9 70)\"/></svg>",
+"electrical": "<svg class=\"ico\" viewBox=\"0 0 200 200\" aria-hidden=\"true\"><use href=\"#pf\"/><path class=\"b\" fill-rule=\"evenodd\" d=\"M102.6,29.5 L79.2,70 L99.1,81.5 L87.9,115 L132.9,83 L112.1,71 L126,43Z\"/><polygon class=\"l\" points=\"79.2,70 99.1,81.5 88.7,87.5 68.8,76\"/><polygon class=\"l\" points=\"102.6,29.5 79.2,70 68.8,76 92.2,35.5\"/><polygon class=\"l\" points=\"99.1,81.5 87.9,115 77.5,121 88.7,87.5\"/><polygon class=\"l\" points=\"87.9,115 132.9,83 122.5,89 77.5,121\"/><polygon class=\"l\" points=\"126,43 102.6,29.5 92.2,35.5 115.6,49\"/><polygon class=\"l\" points=\"112.1,71 126,43 115.6,49 101.7,77\"/><polygon class=\"l\" points=\"132.9,83 112.1,71 101.7,77 122.5,89\"/><path class=\"r\" fill-rule=\"evenodd\" d=\"M92.2,35.5 L68.8,76 L88.7,87.5 L77.5,121 L122.5,89 L101.7,77 L115.6,49Z\"/></svg>",
+"drywall": "<svg class=\"ico\" viewBox=\"0 0 200 200\" aria-hidden=\"true\"><use href=\"#pf\"/><polygon class=\"l\" points=\"96.5,88 100,90 100,28 96.5,26\"/><polygon class=\"r\" points=\"103.5,88 100,90 100,28 103.5,26\"/><polygon class=\"t\" points=\"100,24 103.5,26 100,28 96.5,26\"/><polygon class=\"l\" points=\"113,97.5 116.5,99.5 116.5,37.5 113,35.5\"/><polygon class=\"r\" points=\"119.9,97.5 116.5,99.5 116.5,37.5 119.9,35.5\"/><polygon class=\"t\" points=\"116.5,33.5 119.9,35.5 116.5,37.5 113,35.5\"/><polygon class=\"l\" points=\"78.3,98.5 81.8,100.5 81.8,38.5 78.3,36.5\"/><polygon class=\"r\" points=\"85.3,98.5 81.8,100.5 81.8,38.5 85.3,36.5\"/><polygon class=\"t\" points=\"81.8,34.5 85.3,36.5 81.8,38.5 78.3,36.5\"/><polygon class=\"l\" points=\"96.5,92 162.4,130 162.4,126 96.5,88\"/><polygon class=\"r\" points=\"165.8,128 162.4,130 162.4,126 165.8,124\"/><polygon class=\"t\" points=\"100,86 165.8,124 162.4,126 96.5,88\"/><polygon class=\"l\" points=\"96.5,60 162.4,98 162.4,95 96.5,57\"/><polygon class=\"r\" points=\"165.8,96 162.4,98 162.4,95 165.8,93\"/><polygon class=\"t\" points=\"100,55 165.8,93 162.4,95 96.5,57\"/><polygon class=\"l\" points=\"96.5,26 162.4,64 162.4,60 96.5,22\"/><polygon class=\"r\" points=\"165.8,62 162.4,64 162.4,60 165.8,58\"/><polygon class=\"t\" points=\"100,20 165.8,58 162.4,60 96.5,22\"/><polygon class=\"l\" points=\"34.2,128 37.6,130 37.6,126 34.2,124\"/><polygon class=\"r\" points=\"100,94 37.6,130 37.6,126 100,90\"/><polygon class=\"t\" points=\"96.5,88 100,90 37.6,126 34.2,124\"/><polygon class=\"l\" points=\"129.4,107 132.9,109 132.9,47 129.4,45\"/><polygon class=\"r\" points=\"136.4,107 132.9,109 132.9,47 136.4,45\"/><polygon class=\"t\" points=\"132.9,43 136.4,45 132.9,47 129.4,45\"/><polygon class=\"l\" points=\"34.2,62 37.6,64 37.6,60 34.2,58\"/><polygon class=\"r\" points=\"100,28 37.6,64 37.6,60 100,24\"/><polygon class=\"t\" points=\"96.5,22 100,24 37.6,60 34.2,58\"/><polygon class=\"l\" points=\"61.9,108 65.4,110 65.4,48 61.9,46\"/><polygon class=\"r\" points=\"68.8,108 65.4,110 65.4,48 68.8,46\"/><polygon class=\"t\" points=\"65.4,44 68.8,46 65.4,48 61.9,46\"/><polygon class=\"l\" points=\"145.9,116.5 149.4,118.5 149.4,56.5 145.9,54.5\"/><polygon class=\"r\" points=\"152.8,116.5 149.4,118.5 149.4,56.5 152.8,54.5\"/><polygon class=\"t\" points=\"149.4,52.5 152.8,54.5 149.4,56.5 145.9,54.5\"/><polygon class=\"l\" points=\"45.4,117.5 48.9,119.5 48.9,57.5 45.4,55.5\"/><polygon class=\"r\" points=\"52.4,117.5 48.9,119.5 48.9,57.5 52.4,55.5\"/><polygon class=\"t\" points=\"48.9,53.5 52.4,55.5 48.9,57.5 45.4,55.5\"/><polygon class=\"l\" points=\"158.9,124 162.4,126 162.4,64 158.9,62\"/><polygon class=\"r\" points=\"165.8,124 162.4,126 162.4,64 165.8,62\"/><polygon class=\"t\" points=\"162.4,60 165.8,62 162.4,64 158.9,62\"/><polygon class=\"l\" points=\"34.2,124 37.6,126 37.6,64 34.2,62\"/><polygon class=\"r\" points=\"41.1,124 37.6,126 37.6,64 41.1,62\"/><polygon class=\"t\" points=\"37.6,60 41.1,62 37.6,64 34.2,62\"/></svg>",
+"finishes": "<svg class=\"ico\" viewBox=\"0 0 200 200\" aria-hidden=\"true\"><use href=\"#pf\"/><polygon class=\"l\" points=\"34.2,124 106.9,166 106.9,148 34.2,106\"/><polygon class=\"r\" points=\"165.8,132 106.9,166 106.9,148 165.8,114\"/><polygon class=\"t\" points=\"93.1,72 165.8,114 106.9,148 34.2,106\"/><path class=\"t\" d=\"M121.7,126.5 L118.2,128.2 L114.3,129.5 L110.1,130.3 L105.7,130.8 L101.2,130.8 L96.8,130.3 L92.6,129.5 L88.7,128.2 L85.3,126.5 L82.4,124.5 L80.2,122.3 L78.6,119.8 L77.8,117.3 L77.8,114.7 L78.6,112.2 L80.2,109.7 L82.4,107.5 L85.3,105.5 L88.7,103.8 L92.6,102.5 L96.8,101.7 L101.2,101.2 L105.7,101.2 L110.1,101.7 L114.3,102.5 L118.2,103.8 L121.6,105.5 L124.5,107.5 L126.8,109.7 L128.3,112.2 L129.1,114.7 L129.1,117.3 L128.3,119.8 L126.8,122.3 L124.5,124.5Z\"/><path class=\"k\" d=\"M118.2,125.5 L115.4,126.8 L112.3,127.9 L108.9,128.6 L105.3,129 L101.6,129 L98.1,128.6 L94.7,127.9 L91.5,126.8 L88.7,125.5 L86.4,123.9 L84.6,122.1 L83.4,120.1 L82.7,118 L82.7,116 L83.4,113.9 L84.6,111.9 L86.4,110.1 L88.7,108.5 L91.5,107.2 L94.7,106.1 L98.1,105.4 L101.6,105 L105.3,105 L108.9,105.4 L112.3,106.1 L115.4,107.2 L118.2,108.5 L120.5,110.1 L122.3,111.9 L123.6,113.9 L124.2,116 L124.2,118 L123.6,120.1 L122.3,122.1 L120.5,123.9Z\"/><polygon class=\"l\" points=\"132.9,115 139.8,119 139.8,115 132.9,111\"/><polygon class=\"r\" points=\"146.8,115 139.8,119 139.8,115 146.8,111\"/><polygon class=\"t\" points=\"139.8,107 146.8,111 139.8,115 132.9,111\"/><path class=\"te\" style=\"stroke-width:10.6\" d=\"M139.8,113 L139.8,81 L139.3,77.7 L137.7,74.6 L135.2,71.9 L131.9,70 L128,68.8 L123.9,68.4 L119.8,69 L116,70.4 L112.7,72.6 L110.2,75.3 L108.6,78.5 L108,81.9 L108,89.9\"/><path class=\"tb\" style=\"stroke-width:9\" d=\"M139.8,113 L139.8,81 L139.3,77.7 L137.7,74.6 L135.2,71.9 L131.9,70 L128,68.8 L123.9,68.4 L119.8,69 L116,70.4 L112.7,72.6 L110.2,75.3 L108.6,78.5 L108,81.9 L108,89.9\"/><path class=\"th\" transform=\"translate(-2.5,-2)\" d=\"M139.8,113 L139.8,81 L139.3,77.7 L137.7,74.6 L135.2,71.9 L131.9,70 L128,68.8 L123.9,68.4 L119.8,69 L116,70.4 L112.7,72.6 L110.2,75.3 L108.6,78.5 L108,81.9 L108,89.9\"/><path class=\"st\" d=\"M108,92.9 L108,116.9\"/></svg>",
+"exterior": "<svg class=\"ico\" viewBox=\"0 0 200 200\" aria-hidden=\"true\"><use href=\"#pf\"/><polygon class=\"l\" points=\"37.6,128 100,164 100,157 37.6,121\"/><polygon class=\"r\" points=\"162.4,128 100,164 100,157 162.4,121\"/><polygon class=\"t\" points=\"100,85 162.4,121 100,157 37.6,121\"/><polygon class=\"l\" points=\"93.1,121 100,125 100,102 93.1,98\"/><polygon class=\"r\" points=\"106.9,121 100,125 100,102 106.9,98\"/><polygon class=\"t\" points=\"100,94 106.9,98 100,102 93.1,98\"/><polygon class=\"l\" points=\"55,106 100,132 100,76\"/><polygon class=\"r\" points=\"145,106 100,132 100,76\"/><polygon class=\"l\" points=\"65.4,86 100,106 100,58\"/><polygon class=\"r\" points=\"134.6,86 100,106 100,58\"/><polygon class=\"l\" points=\"77.5,68 100,81 100,38\"/><polygon class=\"r\" points=\"122.5,68 100,81 100,38\"/><circle class=\"d\" cx=\"136.4\" cy=\"115\" r=\"9\"/></svg>",
+"handover": "<svg class=\"ico\" viewBox=\"0 0 200 200\" aria-hidden=\"true\"><use href=\"#pf\"/><path class=\"b\" fill-rule=\"evenodd\" d=\"M59.3,31.3 L101.9,29.9 L144.5,44.5 L144.5,80.5 L143.8,88.6 L141.8,96 L138.5,102.5 L133.8,108.3 L127.9,113.4 L120.5,117.7 L111.9,121.2 L101.9,123.9 L91.9,118.1 L83.3,111.9 L76,105.4 L70,98.5 L65.3,91.2 L62,83.6 L60,75.6 L59.3,67.3ZM77.1,70.1 L86.5,63.5 L97.2,75.2 L118.5,54.5 L127.9,63.9 L97.2,93.2Z\"/><polygon class=\"l\" points=\"59.3,67.3 59.3,31.3 55.5,39.5 55.5,75.5\"/><polygon class=\"l\" points=\"60,75.6 59.3,67.3 55.5,75.5 56.2,83.8\"/><polygon class=\"l\" points=\"62,83.6 60,75.6 56.2,83.8 58.2,91.8\"/><polygon class=\"l\" points=\"65.3,91.2 62,83.6 58.2,91.8 61.5,99.4\"/><polygon class=\"l\" points=\"70,98.5 65.3,91.2 61.5,99.4 66.2,106.7\"/><polygon class=\"l\" points=\"76,105.4 70,98.5 66.2,106.7 72.1,113.6\"/><polygon class=\"l\" points=\"83.3,111.9 76,105.4 72.1,113.6 79.5,120.1\"/><polygon class=\"l\" points=\"59.3,31.3 101.9,29.9 98.1,38.1 55.5,39.5\"/><polygon class=\"l\" points=\"77.1,70.1 86.5,63.5 82.7,71.7 73.3,78.3\"/><polygon class=\"l\" points=\"97.2,93.2 77.1,70.1 73.3,78.3 93.4,101.4\"/><polygon class=\"l\" points=\"91.9,118.1 83.3,111.9 79.5,120.1 88.1,126.3\"/><polygon class=\"l\" points=\"86.5,63.5 97.2,75.2 93.4,83.4 82.7,71.7\"/><polygon class=\"l\" points=\"101.9,123.9 91.9,118.1 88.1,126.3 98.1,132.1\"/><polygon class=\"l\" points=\"111.9,121.2 101.9,123.9 98.1,132.1 108.1,129.4\"/><polygon class=\"l\" points=\"97.2,75.2 118.5,54.5 114.7,62.7 93.4,83.4\"/><polygon class=\"l\" points=\"127.9,63.9 97.2,93.2 93.4,101.4 124.1,72.1\"/><polygon class=\"l\" points=\"120.5,117.7 111.9,121.2 108.1,129.4 116.7,125.9\"/><polygon class=\"l\" points=\"101.9,29.9 144.5,44.5 140.7,52.7 98.1,38.1\"/><polygon class=\"l\" points=\"118.5,54.5 127.9,63.9 124.1,72.1 114.7,62.7\"/><polygon class=\"l\" points=\"127.9,113.4 120.5,117.7 116.7,125.9 124,121.6\"/><polygon class=\"l\" points=\"133.8,108.3 127.9,113.4 124,121.6 130,116.5\"/><polygon class=\"l\" points=\"138.5,102.5 133.8,108.3 130,116.5 134.7,110.7\"/><polygon class=\"l\" points=\"141.8,96 138.5,102.5 134.7,110.7 138,104.1\"/><polygon class=\"l\" points=\"143.8,88.6 141.8,96 138,104.1 140,96.8\"/><polygon class=\"l\" points=\"144.5,80.5 143.8,88.6 140,96.8 140.7,88.7\"/><polygon class=\"l\" points=\"144.5,44.5 144.5,80.5 140.7,88.7 140.7,52.7\"/><path class=\"r\" fill-rule=\"evenodd\" d=\"M55.5,39.5 L98.1,38.1 L140.7,52.7 L140.7,88.7 L140,96.8 L138,104.1 L134.7,110.7 L130,116.5 L124,121.6 L116.7,125.9 L108.1,129.4 L98.1,132.1 L88.1,126.3 L79.5,120.1 L72.1,113.6 L66.2,106.7 L61.5,99.4 L58.2,91.8 L56.2,83.8 L55.5,75.5ZM73.3,78.3 L82.7,71.7 L93.4,83.4 L114.7,62.7 L124.1,72.1 L93.4,101.4Z\"/></svg>"
+};
+  var CHECK = '<svg class="mono" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   var $ = function(id){ return document.getElementById(id); };
-  var grid = $('grid'), results = $('results'), search = $('search');
-
+  var done = new Set(), cur = null, filter = 'all', total = 0;
+  try { JSON.parse(localStorage.getItem(KEY) || '[]').forEach(function(id){ done.add(id); }); } catch(e) {}
   function save(){ try { localStorage.setItem(KEY, JSON.stringify(Array.from(done))); } catch(e) {} }
-  function catDone(ci){ return CATS[ci].items.filter(function(it){ return done.has(it.id); }).length; }
-  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-  function itemRow(it, ci, showCat){
-    var isDone = done.has(it.id);
-    var row = document.createElement('div');
-    row.className = 'item' + (isDone ? ' done' : '');
-    row.dataset.id = it.id;
-    row.innerHTML =
-      (showCat ? '' : '') +
-      '<button class="ck" role="checkbox" aria-checked="' + isDone + '" aria-label="Mark done: ' + esc(it.subject) + '">' +
-        '<svg viewBox="0 0 24 24"><path d="M4 12.5 L9.5 18 L20 6.5"/></svg></button>' +
-      '<div style="flex:1;min-width:0">' +
-        (showCat ? '<div class="catlabel grad-text">' + esc(CATS[ci].name.toUpperCase()) + '</div>' : '') +
-        '<div class="t">' + esc(it.subject) + '</div>' +
-        '<div class="d">' + esc(it.lesson) + '</div>' +
-      '</div>';
-    row.querySelector('.ck').addEventListener('click', function(){ toggle(it.id); });
-    return row;
+  function esc(s){ return s.replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function count(c){ return c.items.filter(function(it){ return done.has(it.id); }).length; }
+  function status(el, x, n){
+    el.className = 'status ' + (x === 0 ? 'ns' : x < n ? 'ip' : '');
+    el.innerHTML = x === 0 ? 'Not started' : x < n ? x + ' of ' + n + ' done' : '<span class="done-pill">' + CHECK + 'Complete</span>';
+  }
+  function row(it, cat){
+    var d = done.has(it.id);
+    return '<li class="item' + (d ? ' done' : '') + '" data-id="' + it.id + '">' +
+      '<button class="chk" aria-pressed="' + d + '" aria-label="Done: ' + esc(it.subject) + '"><i><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></i></button>' +
+      '<div>' + (cat ? '<small class="tag">' + esc(cat) + '</small>' : '') + '<h3><span>' + esc(it.subject) + '</span></h3><p>' + esc(it.lesson) + '</p></div></li>';
   }
 
-  function toggle(id){
-    if (done.has(id)) done.delete(id); else done.add(id);
-    save();
-    document.querySelectorAll('.item').forEach(function(row){
-      if (row.dataset.id === id) {
-        var on = done.has(id);
-        row.classList.toggle('done', on);
-        row.querySelector('.ck').setAttribute('aria-checked', on);
-      }
+  $('cards').innerHTML = CATS.map(function(c, i){
+    total += c.items.length;
+    return '<article class="card" style="--i:' + i + '" data-slug="' + c.slug + '"><div class="art">' + ICONS[c.icon] +
+      '<span class="badge">' + CHECK + '</span></div><h2 class="grad">' + esc(c.name) + '</h2><div class="status"></div>' +
+      '<div class="bar"><i></i></div><button class="pill" aria-label="Explore ' + esc(c.name) + '">Explore</button></article>';
+  }).join('');
+  setTimeout(function(){ $('cards').classList.remove('intro-anim'); }, 1400);
+  var C = 2 * Math.PI * 52, shownPct = 0;
+  $('ringval').style.strokeDasharray = C;
+
+  function update(){
+    var all = 0;
+    CATS.forEach(function(c, i){
+      var x = count(c), n = c.items.length, card = $('cards').children[i];
+      all += x;
+      status(card.querySelector('.status'), x, n);
+      card.querySelector('.bar i').style.width = (100 * x / n) + '%';
+      card.classList.toggle('complete', x === n);
+      if (c === cur){ status($('cstatus'), x, n); $('cbar').style.width = (100 * x / n) + '%'; }
     });
-    updateProgress();
-    if (current >= 0 && search.value.trim() === '') renderCatHead();
-    if (filter !== 'all' && current >= 0 && search.value.trim() === '') applyFilter();
+    var pct = Math.round(100 * all / total);
+    $('ringval').style.strokeDashoffset = C * (1 - all / total);
+    $('tally').textContent = all + ' of ' + total;
+    var from = shownPct, t0 = performance.now(), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    (function tick(now){
+      var k = still ? 1 : Math.min(1, (now - t0) / 700);
+      shownPct = Math.round(from + (pct - from) * (1 - Math.pow(1 - k, 3)));
+      $('pct').textContent = shownPct + '%';
+      if (k < 1) requestAnimationFrame(tick);
+    })(t0);
   }
 
-  function updateProgress(){
-    var n = done.size;
-    $('overallCount').textContent = n + ' of ' + TOTAL + ' lessons done';
-    var pct = TOTAL ? Math.round(n / TOTAL * 100) : 0;
-    $('ringPct').textContent = pct + '%';
-    $('ringFg').style.strokeDashoffset = (314.16 * (1 - n / TOTAL)).toFixed(2);
-    CATS.forEach(function(c, ci){
-      var d = catDone(ci), card = document.getElementById('card-' + ci);
-      if (!card) return;
-      card.classList.toggle('complete', d === c.items.length);
-      card.querySelector('.bar i').style.width = (c.items.length ? d / c.items.length * 100 : 0) + '%';
-      var st = card.querySelector('.status');
-      if (d === c.items.length) st.innerHTML = '<span class="pill-done"><svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5 L9.5 18 L20 6.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Complete</span>';
-      else if (d === 0) st.textContent = 'Not started · ' + c.items.length + ' lessons';
-      else st.textContent = d + ' of ' + c.items.length + ' done';
-    });
-  }
-
-  // dashboard cards
-  CATS.forEach(function(c, ci){
-    var b = document.createElement('button');
-    b.className = 'ccard'; b.id = 'card-' + ci;
-    b.style.animationDelay = (ci * 70) + 'ms';
-    b.setAttribute('aria-label', 'Open ' + c.name);
-    b.innerHTML =
-      '<span class="checkbadge"><svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5 L9.5 18 L20 6.5" fill="none" stroke="#04150a" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
-      '<span class="icon"><svg width="128" height="128" viewBox="0 0 120 120"><use href="#icon-' + c.icon + '"/></svg></span>' +
-      '<h2 class="grad-text">' + esc(c.name) + '</h2>' +
-      '<div class="status"></div>' +
-      '<div class="bar"><i style="width:0%"></i></div>' +
-      '<span class="explore">Explore</span>';
-    b.addEventListener('click', function(){ openCat(ci); });
-    grid.appendChild(b);
-  });
-
-  function renderCatHead(){
-    var c = CATS[current], d = catDone(current);
-    $('catStatus').textContent = d + ' of ' + c.items.length + ' done' + (d === c.items.length ? ' — complete' : '');
-    $('catBar').style.width = (c.items.length ? d / c.items.length * 100 : 0) + '%';
-  }
   function applyFilter(){
-    document.querySelectorAll('#catItems .item').forEach(function(row){
-      var on = done.has(row.dataset.id);
-      row.style.display = (filter === 'all' || (filter === 'done') === on) ? '' : 'none';
+    var shown = 0;
+    [].forEach.call($('clist').children, function(li){
+      var d = li.classList.contains('done');
+      li.hidden = filter === 'rem' ? d : filter === 'done' ? !d : false;
+      if (!li.hidden) shown++;
     });
+    $('cempty').hidden = shown > 0;
   }
-  function openCat(ci){
-    current = ci; filter = 'all';
-    document.querySelectorAll('.seg button').forEach(function(x){ x.classList.toggle('act', x.dataset.f === 'all'); });
-    var c = CATS[ci];
-    $('catName').textContent = c.name;
-    $('catIcon').innerHTML = '<svg width="86" height="86" viewBox="0 0 120 120"><use href="#icon-' + c.icon + '"/></svg>';
-    renderCatHead();
-    var box = $('catItems'); box.innerHTML = '';
-    c.items.forEach(function(it, i){
-      var row = itemRow(it, ci, false);
-      row.style.animationDelay = Math.min(i * 35, 400) + 'ms';
-      box.appendChild(row);
-    });
-    $('view-dash').classList.remove('active');
-    var v = $('view-cat'); v.classList.remove('back-in'); v.classList.add('active');
-    window.scrollTo(0, 0);
-  }
-  function goDash(back){
-    current = -1;
-    $('view-cat').classList.remove('active');
-    var v = $('view-dash'); v.classList.add('active');
-    if (back) { v.classList.remove('back-in'); void v.offsetWidth; v.classList.add('back-in'); }
-    window.scrollTo(0, 0);
-  }
-  $('backBtn').addEventListener('click', function(){ goDash(true); });
-  document.querySelectorAll('.seg button').forEach(function(x){
-    x.addEventListener('click', function(){
-      filter = x.dataset.f;
-      document.querySelectorAll('.seg button').forEach(function(y){ y.classList.toggle('act', y === x); });
+
+  var dashY = 0, fromDash = false;
+  function route(){
+    var c = CATS.filter(function(c){ return c.slug === location.hash.slice(1); })[0];
+    if (c){
+      if (!cur) dashY = scrollY;
+      cur = c; filter = 'all';
+      $('cicon').innerHTML = ICONS[c.icon];
+      $('cname').textContent = c.name;
+      $('clist').innerHTML = c.items.map(function(it){ return row(it); }).join('');
+      [].forEach.call(document.querySelectorAll('.seg button'), function(b){ b.setAttribute('aria-pressed', b.dataset.f === 'all'); });
       applyFilter();
-    });
-  });
-
-  // search across everything
-  search.addEventListener('input', function(){
-    var q = search.value.trim().toLowerCase();
-    if (!q) { results.style.display = 'none'; grid.style.display = ''; return; }
-    grid.style.display = 'none'; results.style.display = '';
-    results.innerHTML = '';
-    var hits = 0;
-    CATS.forEach(function(c, ci){
-      c.items.forEach(function(it){
-        if ((it.subject + ' ' + it.lesson).toLowerCase().indexOf(q) >= 0) {
-          results.appendChild(itemRow(it, ci, true)); hits++;
-        }
-      });
-    });
-    if (!hits) results.innerHTML = '<div class="empty">No lessons match “' + esc(search.value.trim()) + '”.</div>';
-  });
-
-  $('resetBtn').addEventListener('click', function(){
-    if (!done.size) return;
-    if (confirm('Clear all ' + done.size + ' checkmarks and start over?')) {
-      done.clear(); save(); updateProgress();
-      document.querySelectorAll('.item.done').forEach(function(r){ r.classList.remove('done'); });
+      document.title = c.name + ' — Building a Duplex';
+    } else {
+      cur = null; fromDash = false;
+      document.title = 'Building a Duplex — Lessons From Mine';
     }
-  });
+    $('dash').hidden = !!c; $('cat').hidden = !c;
+    update();
+    scrollTo(0, c ? 0 : dashY);
+  }
 
-  updateProgress();
+  $('cards').addEventListener('click', function(e){
+    var card = e.target.closest('.card');
+    if (card){ fromDash = true; location.hash = card.dataset.slug; }
+  });
+  $('back').addEventListener('click', function(){ fromDash ? history.back() : (location.hash = ''); });
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('.chk');
+    if (!b) return;
+    var li = b.parentNode, id = li.dataset.id, d = !done.has(id);
+    d ? done.add(id) : done.delete(id);
+    save();
+    li.classList.toggle('done', d);
+    b.setAttribute('aria-pressed', d);
+    b.classList.remove('pop');
+    if (d){ void b.offsetWidth; b.classList.add('pop'); }
+    update();
+  });
+  document.querySelector('.seg').addEventListener('click', function(e){
+    var b = e.target.closest('button');
+    if (!b) return;
+    filter = b.dataset.f;
+    [].forEach.call(this.children, function(x){ x.setAttribute('aria-pressed', x === b); });
+    applyFilter();
+  });
+  $('q').addEventListener('input', function(){
+    var q = this.value.trim().toLowerCase(), hits = [];
+    if (q) CATS.forEach(function(c){ c.items.forEach(function(it){
+      if ((it.subject + ' ' + it.lesson).toLowerCase().indexOf(q) > -1) hits.push(row(it, c.name));
+    }); });
+    $('cards').hidden = !!q; $('results').hidden = !q;
+    $('rcount').textContent = hits.length + (hits.length === 1 ? ' lesson' : ' lessons') + ' found';
+    $('rlist').innerHTML = hits.join('');
+  });
+  $('q').addEventListener('keydown', function(e){ if (e.key === 'Escape'){ this.value = ''; this.dispatchEvent(new Event('input')); } });
+  $('reset').addEventListener('click', function(){
+    if (!confirm('Clear all checkmarks? This cannot be undone.')) return;
+    done.clear(); save();
+    [].forEach.call(document.querySelectorAll('.item.done'), function(li){ li.classList.remove('done'); li.querySelector('.chk').setAttribute('aria-pressed', false); });
+    update();
+  });
+  addEventListener('hashchange', route);
+  route();
 })();
 </script>
 </body>

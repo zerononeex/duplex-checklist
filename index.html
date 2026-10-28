@@ -12,7 +12,7 @@
 *{box-sizing:border-box}
 html{background:#F4EFE3}
 body{margin:0;background:#F4EFE3;color:#33302A;font:16px/1.55 -apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1120px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 20px 56px}
+.wrap{max-width:1120px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px 28px}
 .view{animation:viewIn .32s var(--ease) both}
 #cat{max-width:760px;margin:0 auto;animation-name:catIn}
 @keyframes viewIn{from{opacity:0;transform:scale(.985)}}
@@ -28,51 +28,50 @@ button{font:inherit;color:inherit;cursor:pointer}
 .mono{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
 /* hero */
-.eyebrow{font-size:12px;letter-spacing:.28em;color:var(--grey);margin:24px 0 14px}
-.note{font-size:13px;margin:-8px 0 14px}
-h1{font-size:clamp(44px,9vw,84px)}
-.sub{font-size:clamp(18px,2.6vw,22px);margin:16px 0 8px}
-.intro{font-size:14px;max-width:560px;margin:0}
-.top{display:grid;gap:32px;align-items:center}
+.eyebrow{font-size:12px;letter-spacing:.28em;color:var(--grey);margin:0 0 4px}
+.note{font-size:12px;line-height:1.45;max-width:640px;margin:0 0 8px}
+h1{font-size:clamp(32px,8.5vw,64px)}
+.sub{font-size:clamp(16px,2.2vw,20px);margin:4px 0 0}
+.top{display:grid;gap:10px;align-items:center}
 @media(min-width:800px){.top{grid-template-columns:1fr auto}}
-.ringbox{display:flex;align-items:center;gap:16px;padding:14px 22px;border:1px solid var(--line);border-radius:22px;background:var(--surf)}
-.ring{width:72px;height:72px;position:relative;flex:none}
+.ringbox{justify-self:start}
+.ringbox{display:flex;align-items:center;gap:12px;padding:6px 16px 6px 8px;border:1px solid var(--line);border-radius:999px;background:var(--surf)}
+.ring{width:42px;height:42px;position:relative;flex:none}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg);filter:drop-shadow(0 0 8px rgba(107,122,74,.3))}
 .ring circle{fill:none;stroke-width:10}
 .ring .trk{stroke:rgba(51,48,42,.1)}
 .ring .val{stroke:url(#gring);stroke-linecap:round;transition:stroke-dashoffset .8s var(--ease)}
-.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:17px;font-weight:600;letter-spacing:-.02em}
-.ringbox p{margin:0}.ringbox strong{display:block;font-size:18px;font-weight:600}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:600;letter-spacing:-.02em}
+.ringbox p{margin:0}.ringbox strong{font-size:16px;font-weight:600}
 
 /* search */
-.search{display:block;position:relative;margin:40px 0 28px;color:#000}
+.search{display:block;position:relative;margin:10px 0;color:#000}
 .search .mono{position:absolute;left:18px;top:50%;transform:translateY(-50%);width:18px;height:18px}
-.search input{width:100%;background:#FCFAF3;border:1px solid var(--line);border-radius:999px;padding:15px 20px 15px 48px;color:#33302A;font:inherit;font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s}
+.search input{width:100%;background:#FCFAF3;border:1px solid var(--line);border-radius:999px;padding:10px 18px 10px 46px;color:#33302A;font:inherit;font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s}
 .search input:focus{border-color:#6B7A4A;box-shadow:var(--glow)}
 
 /* cards */
-.cards{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
-@media(min-width:640px){.cards{grid-template-columns:repeat(3,1fr);gap:16px}}
-@media(min-width:980px){.cards{grid-template-columns:repeat(4,1fr)}}
-.card{background:#FCFAF3;border:1px solid var(--line);box-shadow:0 10px 30px -18px rgba(90,80,50,.12);border-radius:22px;padding:6px 16px 16px;cursor:pointer;display:flex;flex-direction:column;text-align:left;transition:transform .35s var(--ease),box-shadow .35s,border-color .35s}
+.cards{display:grid;gap:8px;grid-template-columns:repeat(3,1fr)}
+@media(min-width:640px){.cards{grid-template-columns:repeat(4,1fr);gap:12px}}
+.card{background:#FCFAF3;border:1px solid var(--line);box-shadow:0 10px 30px -18px rgba(90,80,50,.12);border-radius:18px;padding:2px 10px 10px;cursor:pointer;display:flex;flex-direction:column;text-align:left;transition:transform .35s var(--ease),box-shadow .35s,border-color .35s}
 .intro-anim .card{animation:up .7s var(--ease) both;animation-delay:calc(var(--i)*70ms)}
 @keyframes up{from{opacity:0;transform:translateY(22px)}}
 @media(hover:hover){.card:hover{transform:translateY(-5px);border-color:#B7BF8E;box-shadow:0 24px 50px -24px rgba(90,80,50,.28)}
   .card:hover .ico{filter:drop-shadow(0 8px 14px rgba(107,122,74,.3))}}
-.art{display:block;position:relative;width:min(120px,78%);margin:0 auto}
+.art{display:block;position:relative;width:min(88px,76%);margin:0 auto}
 .ico{display:block;width:100%;height:auto;overflow:visible;transition:filter .5s}
-.card .grad{display:block;font-size:18px;margin:2px 0 4px}
-.card .status{margin-bottom:8px}.card .bar{margin:auto 0 0}
-.status{font-size:13px;min-height:22px;display:flex;align-items:center}
+.card .grad{display:block;font-size:clamp(14px,1.6vw,17px);margin:0 0 2px}
+.card .status{margin-bottom:6px}.card .bar{margin:auto 0 0}
+.status{font-size:12px;min-height:20px;display:flex;align-items:center}
 .status.ns{color:var(--grey)}.status.ip{color:#5C6636}
 .done-pill{display:inline-flex;align-items:center;gap:6px;background:#55612F;color:#fff;border-radius:999px;padding:3px 11px 3px 8px;font-size:13px;font-weight:600}
 .done-pill .mono{width:13px;height:13px;stroke-width:2.6}
 .bar{display:block;height:4px;border-radius:4px;background:rgba(51,48,42,.09);margin:12px 0 22px;overflow:hidden}
 .bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#8A9455,#74824A,#5C6636);box-shadow:0 1px 3px rgba(90,80,50,.2);transition:width .6s var(--ease)}
-.badge{position:absolute;right:0;bottom:16%;width:24px;height:24px;border-radius:50%;background:#fff;color:#000;box-shadow:0 2px 8px rgba(90,80,50,.2);display:grid;place-items:center;opacity:0;transform:scale(.5);transition:opacity .4s,transform .5s var(--ease)}
+.badge{position:absolute;right:0;bottom:16%;width:20px;height:20px;border-radius:50%;background:#fff;color:#000;box-shadow:0 2px 8px rgba(90,80,50,.2);display:grid;place-items:center;opacity:0;transform:scale(.5);transition:opacity .4s,transform .5s var(--ease)}
 .complete .badge{opacity:1;transform:none}.card.complete{border-color:#B7BF8E}
 .complete .ico{filter:drop-shadow(0 6px 16px rgba(107,122,74,.45)) brightness(1.1)}
-.foot{text-align:center;margin-top:48px}.foot p{font-size:13px;margin:14px 0 0}
+.foot{text-align:center;margin-top:16px}.foot p{font-size:12px;margin:8px 0 0}
 
 /* icon artwork (shared gradients in #defs) */
 .ico polygon,.ico path{stroke:#E9EDD8;stroke-opacity:.7;stroke-width:.8;stroke-linejoin:round}
@@ -141,14 +140,13 @@ h1{font-size:clamp(44px,9vw,84px)}
   <div class="top">
     <header>
       <p class="eyebrow">A PERSONAL CHECKLIST FOR HSL</p>
-      <p class="note muted">Fuck yeah. I made you an app instead of an Excel list or an email. Those are so 2026.</p>
+      <p class="note muted">Fuck yeah. I made you an app instead of an Excel list or an email. Those are so 2026. These are my real experiences (including the regrets!); confirm code/technical details with your architect and trades.</p>
       <h1 class="grad">Building a Duplex</h1>
       <p class="sub">Lessons from mine — so yours goes better.</p>
-      <p class="intro muted">Check off items as you go. These are my real experiences (including the regrets!); confirm code/technical details with your architect and trades.</p>
     </header>
     <div class="ringbox">
       <div class="ring"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="52"/><circle class="val" id="ringval" cx="60" cy="60" r="52"/></svg><b id="pct">0%</b></div>
-      <p><strong id="tally">0 of 135</strong><span class="muted">lessons done</span></p>
+      <p><strong id="tally">0 of 135</strong> <span class="muted">lessons done</span></p>
     </div>
   </div>
   <label class="search"><svg class="mono" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
